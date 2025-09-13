@@ -102,12 +102,15 @@ class Parser {
     return this.tokens[this.#idx++] as ExtractTokenType<T>;
   }
 
+  try_consume<T extends Token["type"]>(pattern: T): boolean {
+    if (this.tokens[this.#idx].type !== pattern) return false;
+    this.#idx++;
+    return true;
+  }
+
   parse_property_lookup(): ASTNode {
     let chain = [this.consume("id").name];
-    while (this.scan("/")) {
-      this.consume("/");
-      chain.push(this.consume("id").name);
-    }
+    while (this.try_consume("/")) chain.push(this.consume("id").name);
     return { kind: "property_lookup", chain };
   }
 
@@ -134,10 +137,7 @@ class Parser {
       return { kind: "invoke", lhs, args: [] };
     } else {
       let args = [this.parse_expr()];
-      while (this.scan(",")) {
-        this.consume(",");
-        args.push(this.parse_expr());
-      }
+      while (this.try_consume(",")) args.push(this.parse_expr());
       this.consume(")");
       return { kind: "invoke", lhs, args };
     }
