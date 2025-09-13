@@ -132,8 +132,7 @@ class Parser {
 
   parse_invoke(lhs: ASTNode): ASTNode {
     this.consume("(");
-    if (this.scan(")")) {
-      this.consume(")");
+    if (this.try_consume(")")) {
       return { kind: "invoke", lhs, args: [] };
     } else {
       let args = [this.parse_expr()];
