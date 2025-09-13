@@ -92,10 +92,8 @@ class Parser {
   constructor(private tokens: Token[]) {}
 
   scan(...patterns: Token["type"][]): boolean {
-    let i = 0;
-    for (let type of patterns)
-      if (this.tokens[this.#idx + i++].type !== type) return false;
-
+    let i = this.#idx;
+    for (let type of patterns) if (this.tokens[i++].type !== type) return false;
     return true;
   }
 
