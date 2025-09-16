@@ -10,6 +10,7 @@ type Token =
   | { type: "<" }
   | { type: ">" }
   | { type: "/>" }
+  | { type: "</" }
   | { type: ".." }
   | { type: ":=" }
   | { type: "=" }
@@ -65,20 +66,22 @@ class Lexer {
     while (this.#idx < this.program.length) {
       if (this.#test(/\s+/)) {
         continue;
-      } else if (this.#test("/")) {
-        tokens.push({ type: "/" });
       } else if (this.#test("|")) {
         tokens.push({ type: "|" });
       } else if (this.#test("(")) {
         tokens.push({ type: "(" });
       } else if (this.#test(")")) {
         tokens.push({ type: ")" });
+      } else if (this.#test("/>")) {
+        tokens.push({ type: "/>" });
+      } else if (this.#test("/")) {
+        tokens.push({ type: "/" });
+      } else if (this.#test("</")) {
+        tokens.push({ type: "</" });
       } else if (this.#test("<")) {
         tokens.push({ type: "<" });
       } else if (this.#test(">")) {
         tokens.push({ type: ">" });
-      } else if (this.#test("/>")) {
-        tokens.push({ type: "/>" });
       } else if (this.#test("[")) {
         tokens.push({ type: "[" });
       } else if (this.#test("]")) {
@@ -140,20 +143,35 @@ type ASTNode =
       chain: string[];
     }
   | { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }
-  | { kind: "number"; value: number };
+  | { kind: "number"; value: number }
+  | { kind: "string"; value: string }
+  | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
+  | { kind: "paren"; expr: ASTNode }
+  | JSXNode;
+
+type JSXNode = {
+  kind: "jsx";
+  element: string;
+  attrs: Record<string, ASTNode>;
+  children: JSXNode[];
+};
 
 class Parser {
   #idx = 0;
   constructor(private tokens: Token[]) {}
 
   scan(...patterns: Token["type"][]): boolean {
+    if (patterns.length > this.tokens.length - this.#idx) return false;
     let i = this.#idx;
     for (let type of patterns) if (this.tokens[i++].type !== type) return false;
     return true;
   }
 
   consume<T extends Token["type"]>(pattern: T): ExtractTokenType<T> {
-    if (this.tokens[this.#idx].type !== pattern) throw "parse error";
+    if (this.tokens[this.#idx].type !== pattern) {
+      console.log("expected", pattern, "got", this.tokens[this.#idx].type);
+      throw "parse error";
+    }
     return this.tokens[this.#idx++] as ExtractTokenType<T>;
   }
 
@@ -174,11 +192,38 @@ class Parser {
     return { kind: "number", value };
   }
 
+  parse_jsx(): JSXNode {
+    this.consume("<");
+    let { name } = this.consume("id");
+
+    let attrs: Record<string, ASTNode> = {};
+    while (!this.scan("/>")) {
+      let { name } = this.consume("id");
+      this.consume("=");
+      let { value } = this.consume("string");
+      attrs[name] = { kind: "string", value };
+    }
+
+    this.consume("/>");
+    return { kind: "jsx", element: name, attrs, children: [] };
+  }
+
+  parse_paren_expr(): ASTNode {
+    this.consume("(");
+    let expr = this.parse_expr();
+    this.consume(")");
+    return { kind: "paren", expr };
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
     } else if (this.scan("num")) {
       return this.parse_number();
+    } else if (this.scan("<", "id")) {
+      return this.parse_jsx();
+    } else if (this.scan("(")) {
+      return this.parse_paren_expr();
     } else {
       console.log(this.tokens[this.#idx], this.tokens[this.#idx + 1]);
       throw "parse expr_1 error";
@@ -197,10 +242,18 @@ class Parser {
     }
   }
 
+  parse_range(lhs: ASTNode): ASTNode {
+    this.consume("..");
+    let rhs = this.parse_expr();
+    return { kind: "range", lhs, rhs };
+  }
+
   parse_expr(): ASTNode {
     let expr = this.parse_expr_1();
     if (this.scan("(")) {
       return this.parse_invoke(expr);
+    } else if (this.scan("..")) {
+      return this.parse_range(expr);
     } else {
       return expr;
     }
@@ -210,74 +263,11 @@ class Parser {
   }
 }
 
-let program = `write/local-storage("width", 10) when read/local-storage("width", nil)
-write/local-storage("height", 10) when read/local-storage("height", nil)
-write/local-storage("total-mines", 9) when read/local-storage("height", nil)
-
-write/state/mines(loop |num-mines-left, mines| {
-  if num-mines-left = 0
-    return(mines)
-  else
-    x := rand-int(width),
-    y := rand-int(height),
-    if mines[y][x] then
-      continue(..)
-    else 
-      continue(
-        num-mines-left - 1,
-        [ ..mines | [y] = [ ..mines[y] | [x] = true ] ]
-      )
-    end
-  end
-} starting-with [
-  read/local-storage("total-mines"),
-  (0..height).fill((0..width).fill(false))
-]) when
-  width := read/local-storage("width"),
-  height := read/local-storage("height")
-end
-
-write/html/body(<div class="board" />)
-write/html/append(.board, (0..10).fill(<span class="row" />))
-write/html/append(.row, (0..10).fill(<div class="cell" />))
-
-write/html/attr(
-  .row:nth-child(y) .cell:nth-child(x),
-  { "data-x": x, "data-y": y, class/mine: read/state/mines[y][x] }
-)
-
-write/html/attr(.cell[data-x={x}][data-y={y}], { "data-count": count }) when
-  count := read/html/len(
-    .cell[data-x={(x - 1)..(x + 1)}][data-y={(y - 1)..(y + 1)}].mine:not(
-      [data-x={x}][data-y={y}]
-    )
-  )
-end
-
-write/html/append(.cell, <Flag />)
-write/html/append(.cell.mine, <Mine />)
-write/html/append(.cell[data-count={count}], <Number {count} />) when count > 0
-
-assert_eq(read/html/len(.cell.mine), read/local-storage("total-mines"),
-  "num of mines must always equal settings"
-)
-
-write/html/class/add(.cell[data-x={xs}][data-y={ys}]:not(.open), "open"),
-write/html/event/expand(
-  .cell[data-x={xs}][data-y={ys}]:not(.open, [data-x={x}][data-y={y}])
-) when
-  xs := (x - 1)..(x + 1),
-  ys := (y - 1)..(y + 1),
-  read/html/event/(click|expand)(.cell[data-x={x}][data-y={y}][data-count={count}]),
-  read/html/len(.cell[data-x={xs}][data-y={ys}].flagged) = count
-end
-
-write/html/class/add(.cell[data-x={x}][data-y={y}], "open") when  
-  read/html/event/click(.cell[data-x={x}][data-y={y}]:not(.open))
-end
+let program = `
+0..10
 `;
 
 let tokens = new Lexer(program).run();
-// let ast = new Parser(tokens).run();
+let ast = new Parser(tokens).run();
 
-console.log(tokens);
+console.log(ast);
