@@ -165,6 +165,9 @@ type ASTNode =
   | { kind: "paren"; expr: ASTNode }
   | { kind: "record"; entries: [ASTNode, ASTNode][] }
   | { kind: "assign"; name: string; expr: ASTNode }
+  | { kind: "return"; expr: ASTNode }
+  | { kind: "continue-with-previous-args" }
+  | { kind: "continue"; args: ASTNode[] }
   | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
   | JSXNode;
 
@@ -273,6 +276,33 @@ class Parser {
     return { kind: "assign", name, expr };
   }
 
+  parse_return(): ASTNode {
+    this.consume("return");
+    this.consume("(");
+    let expr = this.parse_expr();
+    this.consume(")");
+    return { kind: "return", expr };
+  }
+
+  parse_continue(): ASTNode {
+    this.consume("continue");
+    this.consume("(");
+    if (this.scan("..")) {
+      this.consume("..");
+      this.consume(")");
+      return { kind: "continue-with-previous-args" };
+    } else {
+      let args: ASTNode[] = [];
+      while (!this.scan(")")) {
+        args.push(this.parse_expr());
+        if (this.scan(")")) continue;
+        else this.consume(",");
+      }
+      this.consume(")");
+      return { kind: "continue", args };
+    }
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
@@ -288,6 +318,10 @@ class Parser {
       return this.parse_assign();
     } else if (this.scan("id")) {
       return this.parse_id();
+    } else if (this.scan("return")) {
+      return this.parse_return();
+    } else if (this.scan("continue")) {
+      return this.parse_continue();
     } else {
       console.log(this.tokens[this.#idx], this.tokens[this.#idx + 1]);
       throw "parse expr_1 error";
@@ -338,7 +372,7 @@ class Parser {
 }
 
 let program = `
-num-mines-left = 0
+continue(a, b)
 `;
 
 let tokens = new Lexer(program).run();
