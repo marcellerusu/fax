@@ -237,7 +237,13 @@ class Parser {
       while (true) {
         let { name } = this.consume("id");
         this.consume("=");
-        attrs[name] = this.parse_string();
+        if (this.scan("{")) {
+          this.consume("{");
+          attrs[name] = this.parse_expr();
+          this.consume("}");
+        } else {
+          attrs[name] = this.parse_string();
+        }
         if (this.scan("/>") || this.scan(">")) break;
       }
     }
@@ -453,7 +459,7 @@ class Parser {
 }
 
 let program = `
-<div>
+<div class={class}>
   <span>{"hey there"}</span>
 </div>
 `;
