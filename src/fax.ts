@@ -180,14 +180,12 @@ type ASTNode =
   | { kind: "plus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "minus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "loop"; args: string[]; body: ASTNode[]; starting_with: ASTNode }
-  | JSXNode;
-
-type JSXNode = {
-  kind: "jsx";
-  element: string;
-  attrs: Record<string, ASTNode>;
-  children: JSXNode[];
-};
+  | {
+      kind: "jsx";
+      element: string;
+      attrs: Record<string, ASTNode>;
+      children: ASTNode[];
+    };
 
 class Parser {
   #idx = 0;
@@ -230,7 +228,7 @@ class Parser {
     return { kind: "number", value };
   }
 
-  parse_jsx(): JSXNode {
+  parse_jsx(): ASTNode {
     this.consume("<");
     let { name } = this.consume("id");
 
@@ -248,7 +246,14 @@ class Parser {
       return { kind: "jsx", element: name, attrs, children: [] };
     } else {
       this.consume(">");
-      let children = [this.parse_jsx()];
+      let children: ASTNode[];
+      if (this.scan("{")) {
+        this.consume("{");
+        children = [this.parse_expr()];
+        this.consume("}");
+      } else {
+        children = [this.parse_jsx()];
+      }
       this.consume("</");
       this.consume("id");
       this.consume(">");
@@ -449,7 +454,7 @@ class Parser {
 
 let program = `
 <div>
-  <span />
+  <span>{"hey there"}</span>
 </div>
 `;
 
