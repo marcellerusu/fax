@@ -165,6 +165,7 @@ type ASTNode =
   | { kind: "paren"; expr: ASTNode }
   | { kind: "record"; entries: [ASTNode, ASTNode][] }
   | { kind: "assign"; name: string; expr: ASTNode }
+  | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
   | JSXNode;
 
 type JSXNode = {
@@ -311,12 +312,20 @@ class Parser {
     return { kind: "range", lhs, rhs };
   }
 
+  parse_eq(lhs: ASTNode): ASTNode {
+    this.consume("=");
+    let rhs = this.parse_expr();
+    return { kind: "eq", lhs, rhs };
+  }
+
   parse_expr(): ASTNode {
     let expr = this.parse_expr_1();
     if (this.scan("(")) {
       return this.parse_invoke(expr);
     } else if (this.scan("..")) {
       return this.parse_range(expr);
+    } else if (this.scan("=")) {
+      return this.parse_eq(expr);
     } else {
       return expr;
     }
@@ -329,7 +338,7 @@ class Parser {
 }
 
 let program = `
-x := rand-int(width)
+num-mines-left = 0
 `;
 
 let tokens = new Lexer(program).run();
