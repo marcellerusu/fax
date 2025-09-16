@@ -312,7 +312,15 @@ class Parser {
     }
   }
   run(): ASTNode[] {
-    return [this.parse_expr()];
+    let ast = [];
+    while (true) {
+      try {
+        ast.push(this.parse_expr());
+      } catch {
+        break;
+      }
+    }
+    return ast;
   }
 }
 
