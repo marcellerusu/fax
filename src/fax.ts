@@ -17,6 +17,7 @@ type Token = (
   | { type: ":=" }
   | { type: "=" }
   | { type: "+" }
+  | { type: "-" }
   | { type: ":" }
   | { type: "," }
   | { type: "." }
@@ -111,6 +112,10 @@ class Lexer {
         tokens.push({ type: ".", span: this.span() });
       } else if (this.#test(":")) {
         tokens.push({ type: ":", span: this.span() });
+      } else if (this.#test("+")) {
+        tokens.push({ type: "+", span: this.span() });
+      } else if (this.#test("-")) {
+        tokens.push({ type: "-", span: this.span() });
       } else if (this.#test("loop")) {
         tokens.push({ type: "loop", span: this.span() });
       } else if (this.#test("return")) {
@@ -139,8 +144,6 @@ class Lexer {
         });
       } else if (this.#test(/(\w|-)+/)) {
         tokens.push({ type: "id", name: this.#match!, span: this.span() });
-      } else if (this.#test("+")) {
-        tokens.push({ type: "+", span: this.span() });
       } else if (this.#test(/"(\\.|[^"\\])*"/)) {
         tokens.push({
           type: "string",
@@ -174,6 +177,8 @@ type ASTNode =
   | { kind: "continue-with-previous-args" }
   | { kind: "continue"; args: ASTNode[] }
   | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
+  | { kind: "plus"; lhs: ASTNode; rhs: ASTNode }
+  | { kind: "minus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "loop"; args: string[]; body: ASTNode[]; starting_with: ASTNode }
   | JSXNode;
 
@@ -392,6 +397,18 @@ class Parser {
     return { kind: "loop", args, body, starting_with };
   }
 
+  parse_plus(lhs: ASTNode): ASTNode {
+    this.consume("+");
+    let rhs = this.parse_expr();
+    return { kind: "plus", lhs, rhs };
+  }
+
+  parse_minus(lhs: ASTNode): ASTNode {
+    this.consume("-");
+    let rhs = this.parse_expr();
+    return { kind: "minus", lhs, rhs };
+  }
+
   parse_expr(): ASTNode {
     if (this.scan("loop")) {
       return this.parse_loop();
@@ -401,6 +418,10 @@ class Parser {
         return this.parse_invoke(expr);
       } else if (this.scan("..")) {
         return this.parse_range(expr);
+      } else if (this.scan("+")) {
+        return this.parse_plus(expr);
+      } else if (this.scan("-")) {
+        return this.parse_minus(expr);
       } else if (this.scan("=")) {
         return this.parse_eq(expr);
       } else {
@@ -416,9 +437,7 @@ class Parser {
 }
 
 let program = `
-loop |num-mines-left, mines| {
-  return(10)
-} starting-with [1, 2]
+(x - 1)..(x + 1)
 `;
 
 let tokens = new Lexer(program).run();
