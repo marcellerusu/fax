@@ -24,6 +24,7 @@ type Token = (
   | { type: "loop" }
   | { type: "return" }
   | { type: "continue" }
+  | { type: "starting-with" }
   | { type: "if" }
   | { type: "else" }
   | { type: "end" }
@@ -116,6 +117,8 @@ class Lexer {
         tokens.push({ type: "return", span: this.span() });
       } else if (this.#test("continue")) {
         tokens.push({ type: "continue", span: this.span() });
+      } else if (this.#test("starting-with")) {
+        tokens.push({ type: "starting-with", span: this.span() });
       } else if (this.#test("when")) {
         tokens.push({ type: "when", span: this.span() });
       } else if (this.#test("if")) {
@@ -171,6 +174,7 @@ type ASTNode =
   | { kind: "continue-with-previous-args" }
   | { kind: "continue"; args: ASTNode[] }
   | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
+  | { kind: "loop"; args: string[]; body: ASTNode[]; starting_with: ASTNode }
   | JSXNode;
 
 type JSXNode = {
@@ -370,16 +374,38 @@ class Parser {
     return { kind: "eq", lhs, rhs };
   }
 
+  parse_loop(): ASTNode {
+    this.consume("loop");
+    let args: string[] = [];
+    this.consume("|");
+    while (!this.scan("|")) {
+      let { name } = this.consume("id");
+      args.push(name);
+      if (!this.scan("|")) this.consume(",");
+    }
+    this.consume("|");
+    this.consume("{");
+    let body = [this.parse_expr()];
+    this.consume("}");
+    this.consume("starting-with");
+    let starting_with = this.parse_array_literal();
+    return { kind: "loop", args, body, starting_with };
+  }
+
   parse_expr(): ASTNode {
-    let expr = this.parse_expr_1();
-    if (this.scan("(")) {
-      return this.parse_invoke(expr);
-    } else if (this.scan("..")) {
-      return this.parse_range(expr);
-    } else if (this.scan("=")) {
-      return this.parse_eq(expr);
+    if (this.scan("loop")) {
+      return this.parse_loop();
     } else {
-      return expr;
+      let expr = this.parse_expr_1();
+      if (this.scan("(")) {
+        return this.parse_invoke(expr);
+      } else if (this.scan("..")) {
+        return this.parse_range(expr);
+      } else if (this.scan("=")) {
+        return this.parse_eq(expr);
+      } else {
+        return expr;
+      }
     }
   }
   run(): ASTNode[] {
@@ -390,7 +416,9 @@ class Parser {
 }
 
 let program = `
-[1, a, "c"]
+loop |num-mines-left, mines| {
+  return(10)
+} starting-with [1, 2]
 `;
 
 let tokens = new Lexer(program).run();
