@@ -126,7 +126,7 @@ class Lexer {
         tokens.push({ type: "id", name: this.#match! });
       } else if (this.#test("+")) {
         tokens.push({ type: "+" });
-      } else if (this.#test(/".*"/)) {
+      } else if (this.#test(/"(\\.|[^"\\])*"/)) {
         tokens.push({ type: "string", value: this.#match!.slice(1, -1) });
       } else {
         console.log(this.program.slice(this.#idx));
@@ -144,9 +144,11 @@ type ASTNode =
     }
   | { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }
   | { kind: "number"; value: number }
+  | { kind: "id"; name: string }
   | { kind: "string"; value: string }
   | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "paren"; expr: ASTNode }
+  | { kind: "record"; entries: [ASTNode, ASTNode][] }
   | JSXNode;
 
 type JSXNode = {
@@ -187,6 +189,11 @@ class Parser {
     return { kind: "property_lookup", chain };
   }
 
+  parse_id(): ASTNode {
+    let { name } = this.consume("id");
+    return { kind: "id", name };
+  }
+
   parse_number(): ASTNode {
     let { value } = this.consume("num");
     return { kind: "number", value };
@@ -215,6 +222,33 @@ class Parser {
     return { kind: "paren", expr };
   }
 
+  parse_string(): ASTNode {
+    let { value } = this.consume("string");
+    return { kind: "string", value };
+  }
+
+  parse_record(): ASTNode {
+    let entries: [ASTNode, ASTNode][] = [];
+    this.consume("{");
+    while (!this.scan("}")) {
+      let left: ASTNode, right: ASTNode;
+      if (this.scan("id")) {
+        left = this.parse_id();
+      } else if (this.scan("string")) {
+        left = this.parse_string();
+      } else {
+        throw "unsupported record key";
+      }
+      this.consume(":");
+      right = this.parse_expr();
+      entries.push([left, right]);
+      if (this.scan("}")) continue;
+      else this.consume(",");
+    }
+    this.consume("}");
+    return { kind: "record", entries };
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
@@ -224,6 +258,10 @@ class Parser {
       return this.parse_jsx();
     } else if (this.scan("(")) {
       return this.parse_paren_expr();
+    } else if (this.scan("{")) {
+      return this.parse_record();
+    } else if (this.scan("id")) {
+      return this.parse_id();
     } else {
       console.log(this.tokens[this.#idx], this.tokens[this.#idx + 1]);
       throw "parse expr_1 error";
@@ -264,7 +302,7 @@ class Parser {
 }
 
 let program = `
-0..10
+{ "data-x": x, "data-y": y }
 `;
 
 let tokens = new Lexer(program).run();
