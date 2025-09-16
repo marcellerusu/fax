@@ -2,9 +2,27 @@ type Token =
   | { type: "/" }
   | { type: "(" }
   | { type: ")" }
+  | { type: "{" }
+  | { type: "}" }
+  | { type: "[" }
+  | { type: "]" }
+  | { type: "|" }
+  | { type: "<" }
+  | { type: ">" }
+  | { type: "/>" }
+  | { type: ".." }
+  | { type: ":=" }
+  | { type: "=" }
   | { type: "+" }
+  | { type: ":" }
   | { type: "," }
+  | { type: "." }
   | { type: "when" }
+  | { type: "loop" }
+  | { type: "return" }
+  | { type: "continue" }
+  | { type: "if" }
+  | { type: "else" }
   | { type: "end" }
   | { type: "true" }
   | { type: "false" }
@@ -49,14 +67,50 @@ class Lexer {
         continue;
       } else if (this.#test("/")) {
         tokens.push({ type: "/" });
+      } else if (this.#test("|")) {
+        tokens.push({ type: "|" });
       } else if (this.#test("(")) {
         tokens.push({ type: "(" });
       } else if (this.#test(")")) {
         tokens.push({ type: ")" });
+      } else if (this.#test("<")) {
+        tokens.push({ type: "<" });
+      } else if (this.#test(">")) {
+        tokens.push({ type: ">" });
+      } else if (this.#test("/>")) {
+        tokens.push({ type: "/>" });
+      } else if (this.#test("[")) {
+        tokens.push({ type: "[" });
+      } else if (this.#test("]")) {
+        tokens.push({ type: "]" });
+      } else if (this.#test("{")) {
+        tokens.push({ type: "{" });
+      } else if (this.#test("}")) {
+        tokens.push({ type: "}" });
+      } else if (this.#test("..")) {
+        tokens.push({ type: ".." });
+      } else if (this.#test(":=")) {
+        tokens.push({ type: ":=" });
+      } else if (this.#test("=")) {
+        tokens.push({ type: "=" });
       } else if (this.#test(",")) {
         tokens.push({ type: "," });
+      } else if (this.#test(".")) {
+        tokens.push({ type: "." });
+      } else if (this.#test(":")) {
+        tokens.push({ type: ":" });
+      } else if (this.#test("loop")) {
+        tokens.push({ type: "loop" });
+      } else if (this.#test("return")) {
+        tokens.push({ type: "return" });
+      } else if (this.#test("continue")) {
+        tokens.push({ type: "continue" });
       } else if (this.#test("when")) {
         tokens.push({ type: "when" });
+      } else if (this.#test("if")) {
+        tokens.push({ type: "if" });
+      } else if (this.#test("else")) {
+        tokens.push({ type: "else" });
       } else if (this.#test("end")) {
         tokens.push({ type: "end" });
       } else if (this.#test("true")) {
@@ -65,13 +119,14 @@ class Lexer {
         tokens.push({ type: "false" });
       } else if (this.#test(/\d+/)) {
         tokens.push({ type: "num", value: Number(this.#match) });
-      } else if (this.#test(/\w+/)) {
+      } else if (this.#test(/(\w|-)+/)) {
         tokens.push({ type: "id", name: this.#match! });
       } else if (this.#test("+")) {
         tokens.push({ type: "+" });
       } else if (this.#test(/".*"/)) {
         tokens.push({ type: "string", value: this.#match!.slice(1, -1) });
       } else {
+        console.log(this.program.slice(this.#idx));
         throw "lex error";
       }
     }
@@ -155,11 +210,74 @@ class Parser {
   }
 }
 
-let program = `
-write/state/count(0)
+let program = `write/local-storage("width", 10) when read/local-storage("width", nil)
+write/local-storage("height", 10) when read/local-storage("height", nil)
+write/local-storage("total-mines", 9) when read/local-storage("height", nil)
+
+write/state/mines(loop |num-mines-left, mines| {
+  if num-mines-left = 0
+    return(mines)
+  else
+    x := rand-int(width),
+    y := rand-int(height),
+    if mines[y][x] then
+      continue(..)
+    else 
+      continue(
+        num-mines-left - 1,
+        [ ..mines | [y] = [ ..mines[y] | [x] = true ] ]
+      )
+    end
+  end
+} starting-with [
+  read/local-storage("total-mines"),
+  (0..height).fill((0..width).fill(false))
+]) when
+  width := read/local-storage("width"),
+  height := read/local-storage("height")
+end
+
+write/html/body(<div class="board" />)
+write/html/append(.board, (0..10).fill(<span class="row" />))
+write/html/append(.row, (0..10).fill(<div class="cell" />))
+
+write/html/attr(
+  .row:nth-child(y) .cell:nth-child(x),
+  { "data-x": x, "data-y": y, class/mine: read/state/mines[y][x] }
+)
+
+write/html/attr(.cell[data-x={x}][data-y={y}], { "data-count": count }) when
+  count := read/html/len(
+    .cell[data-x={(x - 1)..(x + 1)}][data-y={(y - 1)..(y + 1)}].mine:not(
+      [data-x={x}][data-y={y}]
+    )
+  )
+end
+
+write/html/append(.cell, <Flag />)
+write/html/append(.cell.mine, <Mine />)
+write/html/append(.cell[data-count={count}], <Number {count} />) when count > 0
+
+assert_eq(read/html/len(.cell.mine), read/local-storage("total-mines"),
+  "num of mines must always equal settings"
+)
+
+write/html/class/add(.cell[data-x={xs}][data-y={ys}]:not(.open), "open"),
+write/html/event/expand(
+  .cell[data-x={xs}][data-y={ys}]:not(.open, [data-x={x}][data-y={y}])
+) when
+  xs := (x - 1)..(x + 1),
+  ys := (y - 1)..(y + 1),
+  read/html/event/(click|expand)(.cell[data-x={x}][data-y={y}][data-count={count}]),
+  read/html/len(.cell[data-x={xs}][data-y={ys}].flagged) = count
+end
+
+write/html/class/add(.cell[data-x={x}][data-y={y}], "open") when  
+  read/html/event/click(.cell[data-x={x}][data-y={y}]:not(.open))
+end
 `;
 
 let tokens = new Lexer(program).run();
-let ast = new Parser(tokens).run();
+// let ast = new Parser(tokens).run();
 
-console.log(ast);
+console.log(tokens);
