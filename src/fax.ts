@@ -235,15 +235,25 @@ class Parser {
     let { name } = this.consume("id");
 
     let attrs: Record<string, ASTNode> = {};
-    while (!this.scan("/>")) {
-      let { name } = this.consume("id");
-      this.consume("=");
-      let { value } = this.consume("string");
-      attrs[name] = { kind: "string", value };
+    if (this.scan("id")) {
+      while (true) {
+        let { name } = this.consume("id");
+        this.consume("=");
+        attrs[name] = this.parse_string();
+        if (this.scan("/>") || this.scan(">")) break;
+      }
     }
-
-    this.consume("/>");
-    return { kind: "jsx", element: name, attrs, children: [] };
+    if (this.scan("/>")) {
+      this.consume("/>");
+      return { kind: "jsx", element: name, attrs, children: [] };
+    } else {
+      this.consume(">");
+      let children = [this.parse_jsx()];
+      this.consume("</");
+      this.consume("id");
+      this.consume(">");
+      return { kind: "jsx", element: name, attrs, children };
+    }
   }
 
   parse_paren_expr(): ASTNode {
@@ -429,6 +439,7 @@ class Parser {
       }
     }
   }
+
   run(): ASTNode[] {
     let ast = [];
     ast.push(this.parse_expr());
@@ -437,7 +448,9 @@ class Parser {
 }
 
 let program = `
-(x - 1)..(x + 1)
+<div>
+  <span />
+</div>
 `;
 
 let tokens = new Lexer(program).run();
