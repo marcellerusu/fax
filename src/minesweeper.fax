@@ -19,15 +19,15 @@ write/state/mines(loop |num-mines-left, mines| {
   end
 } starting-with [
   read/local-storage("total-mines"),
-  (0..height).fill((0..width).fill(false))
+  fill(0..height, fill(0..width, false))
 ]) when
   width := read/local-storage("width"),
   height := read/local-storage("height")
 end
 
 write/html/body(<div class="board" />)
-write/html/append(.board, (0..10).fill(<span class="row" />))
-write/html/append(.row, (0..10).fill(<div class="cell" />))
+write/html/append(.board, fill(0..read/state/height, <span class="row" />))
+write/html/append(.row, fill(0..read/state/width, <div class="cell" />))
 
 write/html/attr(
   .row:nth-child(y) .cell:nth-child(x),
