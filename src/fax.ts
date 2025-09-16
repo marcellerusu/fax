@@ -51,6 +51,7 @@ class Lexer {
     if (typeof pattern === "string") {
       if (this.program.slice(this.#idx).startsWith(pattern)) {
         this.#idx += pattern.length;
+        this.#match = pattern;
         return true;
       } else {
         return false;
@@ -164,6 +165,7 @@ type ASTNode =
   | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "paren"; expr: ASTNode }
   | { kind: "record"; entries: [ASTNode, ASTNode][] }
+  | { kind: "array_literal"; elements: ASTNode[] }
   | { kind: "assign"; name: string; expr: ASTNode }
   | { kind: "return"; expr: ASTNode }
   | { kind: "continue-with-previous-args" }
@@ -303,17 +305,33 @@ class Parser {
     }
   }
 
+  parse_array_literal(): ASTNode {
+    let elements: ASTNode[] = [];
+    this.consume("[");
+    while (!this.scan("]")) {
+      elements.push(this.parse_expr());
+      if (this.scan("]")) continue;
+      else this.consume(",");
+    }
+    this.consume("]");
+    return { kind: "array_literal", elements };
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
     } else if (this.scan("num")) {
       return this.parse_number();
+    } else if (this.scan("string")) {
+      return this.parse_string();
     } else if (this.scan("<", "id")) {
       return this.parse_jsx();
     } else if (this.scan("(")) {
       return this.parse_paren_expr();
     } else if (this.scan("{")) {
       return this.parse_record();
+    } else if (this.scan("[")) {
+      return this.parse_array_literal();
     } else if (this.scan("id", ":=")) {
       return this.parse_assign();
     } else if (this.scan("id")) {
@@ -372,10 +390,10 @@ class Parser {
 }
 
 let program = `
-continue(a, b)
+[1, a, "c"]
 `;
 
 let tokens = new Lexer(program).run();
+// console.log(tokens);
 let ast = new Parser(tokens).run();
-
 console.log(ast);
