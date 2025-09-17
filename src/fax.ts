@@ -43,109 +43,109 @@ type ExtractTokenType<Type extends Token["type"]> = Type extends "number"
   : { type: Type; span: Span };
 
 class Lexer {
-  #idx = 0;
-  #match: string | null = null;
+  idx = 0;
+  match: string | null = null;
   constructor(private program: string) {}
 
-  #test(pattern: string | RegExp): boolean {
+  test(pattern: string | RegExp): boolean {
     if (typeof pattern === "string") {
-      if (this.program.slice(this.#idx).startsWith(pattern)) {
-        this.#idx += pattern.length;
-        this.#match = pattern;
+      if (this.program.slice(this.idx).startsWith(pattern)) {
+        this.idx += pattern.length;
+        this.match = pattern;
         return true;
       } else {
         return false;
       }
     } else {
-      let result = this.program.slice(this.#idx).match(pattern);
+      let result = this.program.slice(this.idx).match(pattern);
       if (!result || result.index !== 0) return false;
-      this.#match = result[0];
-      this.#idx += this.#match.length;
+      this.match = result[0];
+      this.idx += this.match.length;
       return true;
     }
   }
 
   span() {
-    return { start: this.#idx - this.#match!.length, end: this.#idx };
+    return { start: this.idx - this.match!.length, end: this.idx };
   }
 
   run() {
     let tokens: Token[] = [];
-    while (this.#idx < this.program.length) {
-      if (this.#test(/\s+/)) {
+    while (this.idx < this.program.length) {
+      if (this.test(/\s+/)) {
         continue;
-      } else if (this.#test("|")) {
+      } else if (this.test("|")) {
         tokens.push({ type: "|", span: this.span() });
-      } else if (this.#test("(")) {
+      } else if (this.test("(")) {
         tokens.push({ type: "(", span: this.span() });
-      } else if (this.#test(")")) {
+      } else if (this.test(")")) {
         tokens.push({ type: ")", span: this.span() });
-      } else if (this.#test("/>")) {
+      } else if (this.test("/>")) {
         tokens.push({ type: "/>", span: this.span() });
-      } else if (this.#test("/")) {
+      } else if (this.test("/")) {
         tokens.push({ type: "/", span: this.span() });
-      } else if (this.#test("</")) {
+      } else if (this.test("</")) {
         tokens.push({ type: "</", span: this.span() });
-      } else if (this.#test("<")) {
+      } else if (this.test("<")) {
         tokens.push({ type: "<", span: this.span() });
-      } else if (this.#test(">")) {
+      } else if (this.test(">")) {
         tokens.push({ type: ">", span: this.span() });
-      } else if (this.#test("#<")) {
+      } else if (this.test("#<")) {
         tokens.push({ type: "#<", span: this.span() });
-      } else if (this.#test("{")) {
+      } else if (this.test("{")) {
         tokens.push({ type: "{", span: this.span() });
-      } else if (this.#test("}")) {
+      } else if (this.test("}")) {
         tokens.push({ type: "}", span: this.span() });
-      } else if (this.#test(":=")) {
+      } else if (this.test(":=")) {
         tokens.push({ type: ":=", span: this.span() });
-      } else if (this.#test("=")) {
+      } else if (this.test("=")) {
         tokens.push({ type: "=", span: this.span() });
-      } else if (this.#test(",")) {
+      } else if (this.test(",")) {
         tokens.push({ type: ",", span: this.span() });
-      } else if (this.#test(".")) {
+      } else if (this.test(".")) {
         tokens.push({ type: ".", span: this.span() });
-      } else if (this.#test(":")) {
+      } else if (this.test(":")) {
         tokens.push({ type: ":", span: this.span() });
-      } else if (this.#test("+")) {
+      } else if (this.test("+")) {
         tokens.push({ type: "+", span: this.span() });
-      } else if (this.#test("-")) {
+      } else if (this.test("-")) {
         tokens.push({ type: "-", span: this.span() });
-      } else if (this.#test("loop")) {
+      } else if (this.test("loop")) {
         tokens.push({ type: "loop", span: this.span() });
-      } else if (this.#test("return")) {
+      } else if (this.test("return")) {
         tokens.push({ type: "return", span: this.span() });
-      } else if (this.#test("continue")) {
+      } else if (this.test("continue")) {
         tokens.push({ type: "continue", span: this.span() });
-      } else if (this.#test("starting-with")) {
+      } else if (this.test("starting-with")) {
         tokens.push({ type: "starting-with", span: this.span() });
-      } else if (this.#test("when")) {
+      } else if (this.test("when")) {
         tokens.push({ type: "when", span: this.span() });
-      } else if (this.#test("if")) {
+      } else if (this.test("if")) {
         tokens.push({ type: "if", span: this.span() });
-      } else if (this.#test("else")) {
+      } else if (this.test("else")) {
         tokens.push({ type: "else", span: this.span() });
-      } else if (this.#test("end")) {
+      } else if (this.test("end")) {
         tokens.push({ type: "end", span: this.span() });
-      } else if (this.#test("true")) {
+      } else if (this.test("true")) {
         tokens.push({ type: "true", span: this.span() });
-      } else if (this.#test("false")) {
+      } else if (this.test("false")) {
         tokens.push({ type: "false", span: this.span() });
-      } else if (this.#test(/\d+/)) {
+      } else if (this.test(/\d+/)) {
         tokens.push({
           type: "number",
-          value: Number(this.#match),
+          value: Number(this.match),
           span: this.span(),
         });
-      } else if (this.#test(/(\w|-)+/)) {
-        tokens.push({ type: "id", name: this.#match!, span: this.span() });
-      } else if (this.#test(/"(\\.|[^"\\])*"/)) {
+      } else if (this.test(/(\w|-)+/)) {
+        tokens.push({ type: "id", name: this.match!, span: this.span() });
+      } else if (this.test(/"(\\.|[^"\\])*"/)) {
         tokens.push({
           type: "string",
-          value: this.#match!.slice(1, -1),
+          value: this.match!.slice(1, -1),
           span: this.span(),
         });
       } else {
-        console.log(this.program.slice(this.#idx));
+        console.log(this.program.slice(this.idx));
         throw "lex error";
       }
     }
@@ -177,27 +177,27 @@ type ASTNode =
     };
 
 class Parser {
-  #idx = 0;
+  idx = 0;
   constructor(private tokens: Token[]) {}
 
   scan(...patterns: Token["type"][]): boolean {
-    if (patterns.length > this.tokens.length - this.#idx) return false;
-    let i = this.#idx;
+    if (patterns.length > this.tokens.length - this.idx) return false;
+    let i = this.idx;
     for (let type of patterns) if (this.tokens[i++].type !== type) return false;
     return true;
   }
 
   consume<T extends Token["type"]>(pattern: T): ExtractTokenType<T> {
-    if (this.tokens[this.#idx].type !== pattern) {
-      console.log("expected", pattern, "got", this.tokens[this.#idx].type);
+    if (this.tokens[this.idx].type !== pattern) {
+      console.log("expected", pattern, "got", this.tokens[this.idx].type);
       throw "parse error";
     }
-    return this.tokens[this.#idx++] as ExtractTokenType<T>;
+    return this.tokens[this.idx++] as ExtractTokenType<T>;
   }
 
   try_consume<T extends Token["type"]>(pattern: T): boolean {
-    if (this.tokens[this.#idx].type !== pattern) return false;
-    this.#idx++;
+    if (this.tokens[this.idx].type !== pattern) return false;
+    this.idx++;
     return true;
   }
 
@@ -356,7 +356,7 @@ class Parser {
     } else if (this.scan("continue")) {
       return this.parse_continue();
     } else {
-      console.log(this.tokens[this.#idx], this.tokens[this.#idx + 1]);
+      console.log(this.tokens[this.idx], this.tokens[this.idx + 1]);
       throw "parse expr_1 error";
     }
   }
