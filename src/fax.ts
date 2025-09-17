@@ -7,9 +7,6 @@ type Token = (
   | { type: "#<" }
   | { type: "{" }
   | { type: "}" }
-  | { type: "#[" }
-  | { type: "[" }
-  | { type: "]" }
   | { type: "|" }
   | { type: "<" }
   | { type: ">" }
@@ -93,12 +90,6 @@ class Lexer {
         tokens.push({ type: "<", span: this.span() });
       } else if (this.#test(">")) {
         tokens.push({ type: ">", span: this.span() });
-      } else if (this.#test("#[")) {
-        tokens.push({ type: "#[", span: this.span() });
-      } else if (this.#test("[")) {
-        tokens.push({ type: "[", span: this.span() });
-      } else if (this.#test("]")) {
-        tokens.push({ type: "]", span: this.span() });
       } else if (this.#test("#<")) {
         tokens.push({ type: "#<", span: this.span() });
       } else if (this.#test("{")) {
@@ -163,10 +154,7 @@ class Lexer {
 }
 
 type ASTNode =
-  | {
-      kind: "property_lookup";
-      chain: string[];
-    }
+  | { kind: "property_lookup"; chain: string[] }
   | { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }
   | { kind: "number"; value: number }
   | { kind: "id"; name: string }
@@ -174,14 +162,13 @@ type ASTNode =
   | { kind: "bool"; value: boolean }
   | { kind: "paren"; expr: ASTNode }
   | { kind: "attr_bag"; attrs: Record<string, ASTNode> }
-  | { kind: "array_literal"; elements: ASTNode[] }
   | { kind: "assign"; name: string; expr: ASTNode }
   | { kind: "return"; expr: ASTNode }
   | { kind: "continue"; args: ASTNode[] }
   | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "plus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "minus"; lhs: ASTNode; rhs: ASTNode }
-  | { kind: "loop"; args: string[]; body: ASTNode[]; starting_with: ASTNode }
+  | { kind: "loop"; args: ASTNode[]; body: ASTNode[] }
   | {
       kind: "jsx";
       element: string;
@@ -333,18 +320,6 @@ class Parser {
     return { kind: "continue", args };
   }
 
-  parse_array_literal(): ASTNode {
-    let elements: ASTNode[] = [];
-    this.consume("#[");
-    while (!this.scan("]")) {
-      elements.push(this.parse_expr());
-      if (this.scan("]")) continue;
-      else this.consume(",");
-    }
-    this.consume("]");
-    return { kind: "array_literal", elements };
-  }
-
   parse_true(): ASTNode {
     this.consume("true");
     return { kind: "bool", value: true };
@@ -368,8 +343,6 @@ class Parser {
       return this.parse_paren_expr();
     } else if (this.scan("#<")) {
       return this.parse_attr_bag();
-    } else if (this.scan("#[")) {
-      return this.parse_array_literal();
     } else if (this.scan("id", ":=")) {
       return this.parse_assign();
     } else if (this.scan("id")) {
@@ -408,20 +381,21 @@ class Parser {
 
   parse_loop(): ASTNode {
     this.consume("loop");
-    let args: string[] = [];
+    let args: ASTNode[] = [];
     this.consume("|");
     while (!this.scan("|")) {
-      let { name } = this.consume("id");
-      args.push(name);
+      if (this.scan("id")) {
+        args.push(this.parse_id());
+      } else {
+        args.push(this.parse_assign());
+      }
       if (!this.scan("|")) this.consume(",");
     }
     this.consume("|");
     this.consume("{");
     let body = [this.parse_expr()];
     this.consume("}");
-    this.consume("starting-with");
-    let starting_with = this.parse_array_literal();
-    return { kind: "loop", args, body, starting_with };
+    return { kind: "loop", args, body };
   }
 
   parse_plus(lhs: ASTNode): ASTNode {

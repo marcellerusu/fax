@@ -2,7 +2,7 @@ write/local-storage("width", 10) when read/local-storage("width", nil)
 write/local-storage("height", 10) when read/local-storage("height", nil)
 write/local-storage("total-mines", 9) when read/local-storage("height", nil)
 
-write/state/mines(loop |num-mines-left, mines| {
+write/state/mines(loop |num-mines-left := total-mines, mines| {
   if num-mines-left = 0
     return(mines)
   else
@@ -17,10 +17,9 @@ write/state/mines(loop |num-mines-left, mines| {
       )
     end
   end
-} starting-with #[
-  read/local-storage("total-mines"),
-  repeat(height, repeat(width, false))
-]) when
+}) when
+  total-mines := read/local-storage("total-mines"),
+  mines := repeat(height, repeat(width, false)),
   width := read/local-storage("width"),
   height := read/local-storage("height")
 end
@@ -33,7 +32,7 @@ write/html/attr(.row:nth-child(y) .cell:nth-child(x), #<data-{x} data-{y}>)
 write/html/attr([data-{x}][data-{y}][class="cell"], #<class="cell mine">)
   when read/state/mines[y][x] = true
 
-write/html/attr(.cell[data-{x}][data-{y}], #[data-{count}]) when
+write/html/attr(.cell[data-{x}][data-{y}], #<data-{count}>) when
   count := read/html/len(.cell[data-x={xs}][data-y={ys}].mine:not([data-{x}][data-{y}]))
   xs := range(x - 1, x + 1),
   ys := range(y - 1, y + 1)
