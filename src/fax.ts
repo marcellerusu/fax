@@ -15,7 +15,6 @@ type Token = (
   | { type: ">" }
   | { type: "/>" }
   | { type: "</" }
-  | { type: ".." }
   | { type: ":=" }
   | { type: "=" }
   | { type: "+" }
@@ -106,8 +105,6 @@ class Lexer {
         tokens.push({ type: "{", span: this.span() });
       } else if (this.#test("}")) {
         tokens.push({ type: "}", span: this.span() });
-      } else if (this.#test("..")) {
-        tokens.push({ type: "..", span: this.span() });
       } else if (this.#test(":=")) {
         tokens.push({ type: ":=", span: this.span() });
       } else if (this.#test("=")) {
@@ -180,7 +177,6 @@ type ASTNode =
   | { kind: "array_literal"; elements: ASTNode[] }
   | { kind: "assign"; name: string; expr: ASTNode }
   | { kind: "return"; expr: ASTNode }
-  | { kind: "continue-with-previous-args" }
   | { kind: "continue"; args: ASTNode[] }
   | { kind: "eq"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "plus"; lhs: ASTNode; rhs: ASTNode }
@@ -323,20 +319,14 @@ class Parser {
   parse_continue(): ASTNode {
     this.consume("continue");
     this.consume("(");
-    if (this.scan("..")) {
-      this.consume("..");
-      this.consume(")");
-      return { kind: "continue-with-previous-args" };
-    } else {
-      let args: ASTNode[] = [];
-      while (!this.scan(")")) {
-        args.push(this.parse_expr());
-        if (this.scan(")")) continue;
-        else this.consume(",");
-      }
-      this.consume(")");
-      return { kind: "continue", args };
+    let args: ASTNode[] = [];
+    while (!this.scan(")")) {
+      args.push(this.parse_expr());
+      if (this.scan(")")) continue;
+      else this.consume(",");
     }
+    this.consume(")");
+    return { kind: "continue", args };
   }
 
   parse_array_literal(): ASTNode {

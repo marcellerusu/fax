@@ -9,11 +9,11 @@ write/state/mines(loop |num-mines-left, mines| {
     x := rand-int(width),
     y := rand-int(height),
     if mines[y][x] then
-      continue(..)
+      continue(num-mines-left, mines)
     else 
       continue(
         num-mines-left - 1,
-        #[ ..mines | [y] = #[ ..mines[y] | [x] = true ] ]
+        replace-idx(mines, y, replace-idx(mines[y], x, true))
       )
     end
   end
