@@ -4,7 +4,8 @@ type Token = (
   | { type: "/" }
   | { type: "(" }
   | { type: ")" }
-  | { type: "#<" }
+  | { type: "#[" }
+  | { type: "]" }
   | { type: "{" }
   | { type: "}" }
   | { type: "|" }
@@ -90,8 +91,10 @@ class Lexer {
         tokens.push({ type: "<", span: this.span() });
       } else if (this.test(">")) {
         tokens.push({ type: ">", span: this.span() });
-      } else if (this.test("#<")) {
-        tokens.push({ type: "#<", span: this.span() });
+      } else if (this.test("#[")) {
+        tokens.push({ type: "#[", span: this.span() });
+      } else if (this.test("]")) {
+        tokens.push({ type: "]", span: this.span() });
       } else if (this.test("{")) {
         tokens.push({ type: "{", span: this.span() });
       } else if (this.test("}")) {
@@ -217,9 +220,11 @@ class Parser {
     return { kind: "number", value };
   }
 
-  private parse_jsx_attributes(): Record<string, ASTNode> {
+  private parse_jsx_attributes(
+    ...end_tokens: ("/>" | ">" | "]")[]
+  ): Record<string, ASTNode> {
     let attrs: Record<string, ASTNode> = {};
-    while (!(this.scan("/>") || this.scan(">"))) {
+    while (!end_tokens.some((t) => this.scan(t))) {
       if (this.scan("{")) {
         this.consume("{");
         let { name } = this.consume("id");
@@ -252,7 +257,7 @@ class Parser {
   parse_jsx(): ASTNode {
     this.consume("<");
     let { name } = this.consume("id");
-    let attrs = this.parse_jsx_attributes();
+    let attrs = this.parse_jsx_attributes("/>", ">");
     if (this.scan("/>")) {
       this.consume("/>");
       return { kind: "jsx", element: name, attrs, children: [] };
@@ -286,9 +291,9 @@ class Parser {
   }
 
   parse_attr_bag(): ASTNode {
-    this.consume("#<");
-    let attrs = this.parse_jsx_attributes();
-    this.consume(">");
+    this.consume("#[");
+    let attrs = this.parse_jsx_attributes("]");
+    this.consume("]");
     return { kind: "attr_bag", attrs };
   }
 
@@ -341,7 +346,7 @@ class Parser {
       return this.parse_jsx();
     } else if (this.scan("(")) {
       return this.parse_paren_expr();
-    } else if (this.scan("#<")) {
+    } else if (this.scan("#[")) {
       return this.parse_attr_bag();
     } else if (this.scan("id", ":=")) {
       return this.parse_assign();
@@ -437,7 +442,7 @@ class Parser {
 }
 
 let program = `
-#<data-x="test" {class}>
+#[data-x="test" {class}]
 `;
 
 let tokens = new Lexer(program).run();
