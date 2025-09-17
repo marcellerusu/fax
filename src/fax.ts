@@ -162,6 +162,12 @@ class Lexer {
 type ASTNode =
   | { kind: "property_lookup"; chain: string[] }
   | { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }
+  | {
+      kind: "conditional_invoke";
+      lhs: ASTNode;
+      args: ASTNode[];
+      conds: ASTNode[];
+    }
   | { kind: "number"; value: number }
   | { kind: "id"; name: string }
   | { kind: "string"; value: string }
@@ -203,7 +209,7 @@ class Parser {
   }
 
   try_consume<T extends Token["type"]>(pattern: T): boolean {
-    if (this.tokens[this.idx].type !== pattern) return false;
+    if (this.tokens[this.idx]?.type !== pattern) return false;
     this.idx++;
     return true;
   }
@@ -389,7 +395,7 @@ class Parser {
       return this.parse_if();
     } else {
       console.log(this.tokens[this.idx], this.tokens[this.idx + 1]);
-      throw "parse expr_1 error";
+      throw new Error("parse expr_1 error");
     }
   }
 
@@ -461,9 +467,37 @@ class Parser {
     }
   }
 
+  parse_statement(): ASTNode {
+    let write_method = this.parse_property_lookup();
+    let method = this.parse_invoke(write_method) as {
+      kind: "invoke";
+      lhs: ASTNode;
+      args: ASTNode[];
+    };
+    if (this.scan("when")) {
+      this.consume("when");
+      let conds = [];
+      while (true) {
+        conds.push(this.parse_expr());
+        if (this.scan(",")) this.consume(",");
+        else break;
+      }
+      if (this.scan("end")) this.consume("end");
+      return { ...method, kind: "conditional_invoke", conds };
+    } else {
+      return method;
+    }
+  }
+
   run(): ASTNode[] {
     let ast = [];
-    ast.push(this.parse_expr());
+    while (
+      this.tokens[this.idx] &&
+      this.tokens[this.idx].type === "id" &&
+      (this.tokens[this.idx] as any).name === "write"
+    ) {
+      ast.push(this.parse_statement());
+    }
     return ast;
   }
 }
@@ -471,85 +505,87 @@ class Parser {
 class Emitter {
   constructor(public ast: ASTNode[]) {}
 
-  emit_string(node: { kind: "string"; value: string }): string {
+  emit_string(node: { value: string }): string {
     return `"${node.value}"`;
   }
 
-  emit_number(_node: { kind: "number"; value: number }): string {
+  emit_number(_node: { value: number }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_property_lookup(node: {
-    kind: "property_lookup";
-    chain: string[];
-  }): string {
+  emit_property_lookup(node: { chain: string[] }): string {
     return node.chain.join(".");
   }
 
-  emit_invoke(node: { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }): string {
+  emit_invoke(node: { lhs: ASTNode; args: ASTNode[] }): string {
     return `${this.emit_node(node.lhs)}(${node.args
       .map((n) => this.emit_node(n))
       .join(", ")})`;
   }
 
-  emit_id(_node: { kind: "id"; name: string }): string {
-    throw new Error("Method not implemented.");
-  }
-
-  emit_bool(_node: { kind: "bool"; value: boolean }): string {
-    throw new Error("Method not implemented.");
-  }
-
-  emit_paren(_node: { kind: "paren"; expr: ASTNode }): string {
-    throw new Error("Method not implemented.");
-  }
-
-  emit_attr_bag(_node: {
-    kind: "attr_bag";
-    attrs: Record<string, ASTNode>;
+  emit_conditional_invoke(node: {
+    lhs: ASTNode;
+    args: ASTNode[];
+    conds: ASTNode[];
   }): string {
+    return `eff(() => {
+      if (${node.conds.map((c) => this.emit_node(c)).join(" && ")}) {
+        ${this.emit_node(node.lhs)}(${node.args
+      .map((a) => this.emit_node(a))
+      .join(", ")})
+      }
+    })`;
+  }
+
+  emit_id(_node: { name: string }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_assign(_node: { kind: "assign"; name: string; expr: ASTNode }): string {
+  emit_bool(node: { value: boolean }): string {
+    return `${node.value}`;
+  }
+
+  emit_paren(_node: { expr: ASTNode }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_return(_node: { kind: "return"; expr: ASTNode }): string {
+  emit_attr_bag(_node: { attrs: Record<string, ASTNode> }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_continue(_node: { kind: "continue"; args: ASTNode[] }): string {
+  emit_assign(_node: { name: string; expr: ASTNode }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_eq(_node: { kind: "eq"; lhs: ASTNode; rhs: ASTNode }): string {
+  emit_return(_node: { expr: ASTNode }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_plus(_node: { kind: "plus"; lhs: ASTNode; rhs: ASTNode }): string {
+  emit_continue(_node: { args: ASTNode[] }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_minus(_node: { kind: "minus"; lhs: ASTNode; rhs: ASTNode }): string {
+  emit_eq(node: { lhs: ASTNode; rhs: ASTNode }): string {
+    return `${this.emit_node(node.lhs)} === ${this.emit_node(node.rhs)}`;
+  }
+
+  emit_plus(_node: { lhs: ASTNode; rhs: ASTNode }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_loop(_node: { kind: "loop"; args: ASTNode[]; body: ASTNode[] }): string {
+  emit_minus(_node: { lhs: ASTNode; rhs: ASTNode }): string {
     throw new Error("Method not implemented.");
   }
 
-  emit_if(_node: {
-    kind: "if";
-    test: ASTNode;
-    pass: ASTNode[];
-    fail: ASTNode[];
-  }): string {
+  emit_loop(_node: { args: ASTNode[]; body: ASTNode[] }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_if(_node: { test: ASTNode; pass: ASTNode[]; fail: ASTNode[] }): string {
     throw new Error("Method not implemented.");
   }
 
   emit_jsx(node: {
-    kind: "jsx";
     element: string;
     attrs: Record<string, ASTNode>;
     children: ASTNode[];
@@ -598,12 +634,14 @@ class Emitter {
         return this.emit_if(node);
       case "jsx":
         return this.emit_jsx(node);
+      case "conditional_invoke":
+        return this.emit_conditional_invoke(node);
     }
   }
 
   emit(): string {
     let out = "";
-    for (let node of this.ast) out += this.emit_node(node);
+    for (let node of this.ast) out += this.emit_node(node) + ";\n";
     return out;
   }
 }
