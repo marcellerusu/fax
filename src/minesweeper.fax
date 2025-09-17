@@ -29,11 +29,11 @@ write/html/body(<div class="board" />)
 write/html/append(.board, fill(0..read/state/height, <span class="row" />))
 write/html/append(.row, fill(0..read/state/width, <div class="cell" />))
 
-write/html/attr(.row:nth-child(y) .cell:nth-child(x), #{ "data-x": x, "data-y": y })
-write/html/attr([data-x={x}][data-y={y}][class="cell"], #{ class: "cell mine" })
+write/html/attr(.row:nth-child(y) .cell:nth-child(x), #{ data-x = x, data-y = y })
+write/html/attr([data-x={x}][data-y={y}][class="cell"], #{ class = "cell mine" })
   when read/state/mines[y][x] = true
 
-write/html/attr(.cell[data-x={x}][data-y={y}], #{ "data-count": count }) when
+write/html/attr(.cell[data-x={x}][data-y={y}], #{ data-count = count }) when
   count := read/html/len(
     .cell[data-x={(x - 1)..(x + 1)}][data-y={(y - 1)..(y + 1)}].mine:not(
       [data-x={x}][data-y={y}]

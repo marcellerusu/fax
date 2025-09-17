@@ -305,13 +305,16 @@ class Parser {
     while (!this.scan("}")) {
       let left: ASTNode, right: ASTNode;
       if (this.scan("id")) {
-        left = this.parse_id();
+        let { name } = this.consume("id");
+        left = { kind: "string", value: name };
       } else if (this.scan("string")) {
         left = this.parse_string();
       } else {
-        throw "unsupported record key";
+        this.consume("[");
+        left = this.parse_expr();
+        this.consume("]");
       }
-      this.consume(":");
+      this.consume("=");
       right = this.parse_expr();
       entries.push([left, right]);
       if (this.scan("}")) continue;
@@ -493,7 +496,7 @@ class Parser {
 }
 
 let program = `
-#[ #{ a: b } ]
+#{ data-x="test" }
 `;
 
 let tokens = new Lexer(program).run();
