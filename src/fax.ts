@@ -4,7 +4,7 @@ type Token = (
   | { type: "/" }
   | { type: "(" }
   | { type: ")" }
-  | { type: "#{" }
+  | { type: "#<" }
   | { type: "{" }
   | { type: "}" }
   | { type: "#[" }
@@ -100,8 +100,8 @@ class Lexer {
         tokens.push({ type: "[", span: this.span() });
       } else if (this.#test("]")) {
         tokens.push({ type: "]", span: this.span() });
-      } else if (this.#test("#{")) {
-        tokens.push({ type: "#{", span: this.span() });
+      } else if (this.#test("#<")) {
+        tokens.push({ type: "#<", span: this.span() });
       } else if (this.#test("{")) {
         tokens.push({ type: "{", span: this.span() });
       } else if (this.#test("}")) {
@@ -177,7 +177,7 @@ type ASTNode =
   | { kind: "bool"; value: boolean }
   | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "paren"; expr: ASTNode }
-  | { kind: "record"; entries: [ASTNode, ASTNode][] }
+  | { kind: "attr_bag"; attrs: Record<string, ASTNode> }
   | { kind: "array_literal"; elements: ASTNode[] }
   | { kind: "assign"; name: string; expr: ASTNode }
   | { kind: "return"; expr: ASTNode }
@@ -299,29 +299,11 @@ class Parser {
     return { kind: "string", value };
   }
 
-  parse_record(): ASTNode {
-    let entries: [ASTNode, ASTNode][] = [];
-    this.consume("#{");
-    while (!this.scan("}")) {
-      let left: ASTNode, right: ASTNode;
-      if (this.scan("id")) {
-        let { name } = this.consume("id");
-        left = { kind: "string", value: name };
-      } else if (this.scan("string")) {
-        left = this.parse_string();
-      } else {
-        this.consume("[");
-        left = this.parse_expr();
-        this.consume("]");
-      }
-      this.consume("=");
-      right = this.parse_expr();
-      entries.push([left, right]);
-      if (this.scan("}")) continue;
-      else this.consume(",");
-    }
-    this.consume("}");
-    return { kind: "record", entries };
+  parse_attr_bag(): ASTNode {
+    this.consume("#<");
+    let attrs = this.parse_jsx_attributes();
+    this.consume(">");
+    return { kind: "attr_bag", attrs };
   }
 
   parse_assign(): ASTNode {
@@ -391,8 +373,8 @@ class Parser {
       return this.parse_jsx();
     } else if (this.scan("(")) {
       return this.parse_paren_expr();
-    } else if (this.scan("#{")) {
-      return this.parse_record();
+    } else if (this.scan("#<")) {
+      return this.parse_attr_bag();
     } else if (this.scan("#[")) {
       return this.parse_array_literal();
     } else if (this.scan("id", ":=")) {
@@ -496,7 +478,7 @@ class Parser {
 }
 
 let program = `
-#{ data-x="test" }
+#<data-x="test">
 `;
 
 let tokens = new Lexer(program).run();
