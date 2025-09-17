@@ -468,16 +468,151 @@ class Parser {
   }
 }
 
-let program = `
-if a = true then
-  b := true,
-  #[a]
-else
-  "wee"
-end  
-`;
+class Emitter {
+  constructor(public ast: ASTNode[]) {}
 
-let tokens = new Lexer(program).run();
-// console.log(tokens);
-let ast = new Parser(tokens).run();
-console.log(ast);
+  emit_string(node: { kind: "string"; value: string }): string {
+    return `"${node.value}"`;
+  }
+
+  emit_number(_node: { kind: "number"; value: number }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_property_lookup(node: {
+    kind: "property_lookup";
+    chain: string[];
+  }): string {
+    return node.chain.join(".");
+  }
+
+  emit_invoke(node: { kind: "invoke"; lhs: ASTNode; args: ASTNode[] }): string {
+    return `${this.emit_node(node.lhs)}(${node.args
+      .map((n) => this.emit_node(n))
+      .join(", ")})`;
+  }
+
+  emit_id(_node: { kind: "id"; name: string }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_bool(_node: { kind: "bool"; value: boolean }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_paren(_node: { kind: "paren"; expr: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_attr_bag(_node: {
+    kind: "attr_bag";
+    attrs: Record<string, ASTNode>;
+  }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_assign(_node: { kind: "assign"; name: string; expr: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_return(_node: { kind: "return"; expr: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_continue(_node: { kind: "continue"; args: ASTNode[] }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_eq(_node: { kind: "eq"; lhs: ASTNode; rhs: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_plus(_node: { kind: "plus"; lhs: ASTNode; rhs: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_minus(_node: { kind: "minus"; lhs: ASTNode; rhs: ASTNode }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_loop(_node: { kind: "loop"; args: ASTNode[]; body: ASTNode[] }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_if(_node: {
+    kind: "if";
+    test: ASTNode;
+    pass: ASTNode[];
+    fail: ASTNode[];
+  }): string {
+    throw new Error("Method not implemented.");
+  }
+
+  emit_jsx(node: {
+    kind: "jsx";
+    element: string;
+    attrs: Record<string, ASTNode>;
+    children: ASTNode[];
+  }): string {
+    let attrs = `{ ${Object.entries(node.attrs)
+      .map(([key, value]) => `${key}: ${this.emit_node(value)}`)
+      .join(", ")} }`;
+    return `h("${node.element}", ${attrs}, [${node.children
+      .map((c) => this.emit_node(c))
+      .join(", ")}])`;
+  }
+
+  emit_node(node: ASTNode): string {
+    switch (node.kind) {
+      case "string":
+        return this.emit_string(node);
+      case "number":
+        return this.emit_number(node);
+      case "property_lookup":
+        return this.emit_property_lookup(node);
+      case "invoke":
+        return this.emit_invoke(node);
+      case "id":
+        return this.emit_id(node);
+      case "bool":
+        return this.emit_bool(node);
+      case "paren":
+        return this.emit_paren(node);
+      case "attr_bag":
+        return this.emit_attr_bag(node);
+      case "assign":
+        return this.emit_assign(node);
+      case "return":
+        return this.emit_return(node);
+      case "continue":
+        return this.emit_continue(node);
+      case "eq":
+        return this.emit_eq(node);
+      case "plus":
+        return this.emit_plus(node);
+      case "minus":
+        return this.emit_minus(node);
+      case "loop":
+        return this.emit_loop(node);
+      case "if":
+        return this.emit_if(node);
+      case "jsx":
+        return this.emit_jsx(node);
+    }
+  }
+  emit(): string {
+    let out = "";
+    for (let node of this.ast) out += this.emit_node(node);
+    return out;
+  }
+}
+
+export function compile(program: string) {
+  let tokens = new Lexer(program).run();
+  // console.log(tokens);
+  let ast = new Parser(tokens).run();
+  // console.log(ast);
+  let out = new Emitter(ast).emit();
+  console.log(out);
+  return out;
+}

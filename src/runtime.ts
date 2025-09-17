@@ -16,8 +16,19 @@ export function createSignal<T>(initial: T): Signal<T> {
   return [get, set];
 }
 
+export function h(
+  element: string,
+  attrs: Record<string, any>,
+  children: any[]
+): HTMLElement {
+  let elem = document.createElement(element);
+  for (let key in attrs) elem.setAttribute(key, attrs[key]);
+  elem.append(...children);
+  return elem;
+}
+
 let currentEffect: Function | null = null;
-function eff(fn: Function) {
+export function eff(fn: Function) {
   currentEffect = fn;
   fn(); // run once to register dependencies
   currentEffect = null;
@@ -25,7 +36,7 @@ function eff(fn: Function) {
 
 let _state: any = {};
 
-let write = {
+export let write = {
   state: new Proxy(
     {},
     {
@@ -52,7 +63,7 @@ let write = {
 
 let _events: any = {};
 
-let read = {
+export let read = {
   state: new Proxy(
     {},
     {
