@@ -168,6 +168,7 @@ type ASTNode =
   | { kind: "number"; value: number }
   | { kind: "id"; name: string }
   | { kind: "string"; value: string }
+  | { kind: "bool"; value: boolean }
   | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "paren"; expr: ASTNode }
   | { kind: "record"; entries: [ASTNode, ASTNode][] }
@@ -228,25 +229,38 @@ class Parser {
     return { kind: "number", value };
   }
 
+  private parse_jsx_attributes(): Record<string, ASTNode> {
+    let attrs: Record<string, ASTNode> = {};
+    while (!(this.scan("/>") || this.scan(">"))) {
+      if (this.scan("{")) {
+        this.consume("{");
+        let { name } = this.consume("id");
+        this.consume("}");
+        attrs[name] = { kind: "id", name };
+      } else {
+        let { name } = this.consume("id");
+        if (this.scan("=")) {
+          this.consume("=");
+          if (this.scan("{")) {
+            this.consume("{");
+            let expr = this.parse_expr();
+            this.consume("}");
+            attrs[name] = expr;
+          } else {
+            attrs[name] = this.parse_string();
+          }
+        } else {
+          attrs[name] = { kind: "bool", value: true };
+        }
+      }
+    }
+    return attrs;
+  }
+
   parse_jsx(): ASTNode {
     this.consume("<");
     let { name } = this.consume("id");
-
-    let attrs: Record<string, ASTNode> = {};
-    if (this.scan("id")) {
-      while (true) {
-        let { name } = this.consume("id");
-        this.consume("=");
-        if (this.scan("{")) {
-          this.consume("{");
-          attrs[name] = this.parse_expr();
-          this.consume("}");
-        } else {
-          attrs[name] = this.parse_string();
-        }
-        if (this.scan("/>") || this.scan(">")) break;
-      }
-    }
+    let attrs = this.parse_jsx_attributes();
     if (this.scan("/>")) {
       this.consume("/>");
       return { kind: "jsx", element: name, attrs, children: [] };
@@ -347,6 +361,16 @@ class Parser {
     return { kind: "array_literal", elements };
   }
 
+  parse_true(): ASTNode {
+    this.consume("true");
+    return { kind: "bool", value: true };
+  }
+
+  parse_false(): ASTNode {
+    this.consume("false");
+    return { kind: "bool", value: false };
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
@@ -366,6 +390,10 @@ class Parser {
       return this.parse_assign();
     } else if (this.scan("id")) {
       return this.parse_id();
+    } else if (this.scan("true")) {
+      return this.parse_true();
+    } else if (this.scan("false")) {
+      return this.parse_false();
     } else if (this.scan("return")) {
       return this.parse_return();
     } else if (this.scan("continue")) {
@@ -459,7 +487,7 @@ class Parser {
 }
 
 let program = `
-<div class={class}>
+<div has-attr={false}>
   <span>{"hey there"}</span>
 </div>
 `;
