@@ -7,18 +7,21 @@ write/state/count(0)
   
 write/html/body(
   <div>
-    <button class="minus">{"+"}</button>
+    <button class="minus">{"-"}</button>
     {count}
     <button class="plus">{"+"}</button>
-  </div>) when count := read/state/count
+  </div>
+) when count := read/state/count
 
 write/state/count(count + 1) when
   read/html/event/click(".plus"),
   count := read/state/count
+end
 
 write/state/count(count - 1) when
   read/html/event/click(".minus"),
   count := read/state/count
+end
 `);
 
 eval(code);
