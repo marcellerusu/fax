@@ -32,13 +32,13 @@ type Token = (
   | { type: "end" }
   | { type: "true" }
   | { type: "false" }
-  | { type: "num"; value: number }
+  | { type: "number"; value: number }
   | { type: "id"; name: string }
   | { type: "string"; value: string }
 ) & { span: Span };
 
-type ExtractTokenType<Type extends Token["type"]> = Type extends "num"
-  ? { type: "num"; value: number; span: Span }
+type ExtractTokenType<Type extends Token["type"]> = Type extends "number"
+  ? { type: "number"; value: number; span: Span }
   : Type extends "id"
   ? { type: "id"; name: string; span: Span }
   : Type extends "string"
@@ -141,7 +141,7 @@ class Lexer {
         tokens.push({ type: "false", span: this.span() });
       } else if (this.#test(/\d+/)) {
         tokens.push({
-          type: "num",
+          type: "number",
           value: Number(this.#match),
           span: this.span(),
         });
@@ -226,7 +226,7 @@ class Parser {
   }
 
   parse_number(): ASTNode {
-    let { value } = this.consume("num");
+    let { value } = this.consume("number");
     return { kind: "number", value };
   }
 
@@ -248,7 +248,11 @@ class Parser {
             this.consume("}");
             attrs[name] = expr;
           } else {
-            attrs[name] = this.parse_string();
+            if (this.scan("string")) {
+              attrs[name] = this.parse_string();
+            } else if (this.scan("number")) {
+              attrs[name] = this.parse_number();
+            }
           }
         } else {
           attrs[name] = { kind: "bool", value: true };
@@ -354,7 +358,7 @@ class Parser {
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
-    } else if (this.scan("num")) {
+    } else if (this.scan("number")) {
       return this.parse_number();
     } else if (this.scan("string")) {
       return this.parse_string();
