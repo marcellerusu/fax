@@ -600,6 +600,7 @@ class Emitter {
         return this.emit_jsx(node);
     }
   }
+
   emit(): string {
     let out = "";
     for (let node of this.ast) out += this.emit_node(node);
