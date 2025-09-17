@@ -4,8 +4,10 @@ type Token = (
   | { type: "/" }
   | { type: "(" }
   | { type: ")" }
+  | { type: "#{" }
   | { type: "{" }
   | { type: "}" }
+  | { type: "#[" }
   | { type: "[" }
   | { type: "]" }
   | { type: "|" }
@@ -92,10 +94,14 @@ class Lexer {
         tokens.push({ type: "<", span: this.span() });
       } else if (this.#test(">")) {
         tokens.push({ type: ">", span: this.span() });
+      } else if (this.#test("#[")) {
+        tokens.push({ type: "#[", span: this.span() });
       } else if (this.#test("[")) {
         tokens.push({ type: "[", span: this.span() });
       } else if (this.#test("]")) {
         tokens.push({ type: "]", span: this.span() });
+      } else if (this.#test("#{")) {
+        tokens.push({ type: "#{", span: this.span() });
       } else if (this.#test("{")) {
         tokens.push({ type: "{", span: this.span() });
       } else if (this.#test("}")) {
@@ -295,7 +301,7 @@ class Parser {
 
   parse_record(): ASTNode {
     let entries: [ASTNode, ASTNode][] = [];
-    this.consume("{");
+    this.consume("#{");
     while (!this.scan("}")) {
       let left: ASTNode, right: ASTNode;
       if (this.scan("id")) {
@@ -351,7 +357,7 @@ class Parser {
 
   parse_array_literal(): ASTNode {
     let elements: ASTNode[] = [];
-    this.consume("[");
+    this.consume("#[");
     while (!this.scan("]")) {
       elements.push(this.parse_expr());
       if (this.scan("]")) continue;
@@ -382,9 +388,9 @@ class Parser {
       return this.parse_jsx();
     } else if (this.scan("(")) {
       return this.parse_paren_expr();
-    } else if (this.scan("{")) {
+    } else if (this.scan("#{")) {
       return this.parse_record();
-    } else if (this.scan("[")) {
+    } else if (this.scan("#[")) {
       return this.parse_array_literal();
     } else if (this.scan("id", ":=")) {
       return this.parse_assign();
@@ -487,9 +493,7 @@ class Parser {
 }
 
 let program = `
-<div has-attr={false}>
-  <span>{"hey there"}</span>
-</div>
+#[ #{ a: b } ]
 `;
 
 let tokens = new Lexer(program).run();
