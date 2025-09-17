@@ -13,7 +13,7 @@ write/state/mines(loop |num-mines-left := total-mines, mines| {
     else
       continue(
         num-mines-left - 1,
-        replace-idx(mines, y, replace-idx(mines[y], x, true))
+        replace(mines, y, replace(mines[y], x, true))
       )
     end
   end
@@ -32,7 +32,7 @@ write/html/attr(.row:nth-child(y) .cell:nth-child(x), #[data-{x} data-{y}])
 write/html/attr([data-{x}][data-{y}][class="cell"], #[class="cell mine"])
   when read/state/mines[y][x] = true
 
-write/html/attr(.cell[data-{x}][data-{y}], #[data-{count}]) when
+write/html/attr(.cell[data-{x}][data-{y}]:not(.mine), #[data-{count}]) when
   count := read/html/len(.cell[data-x={xs}][data-y={ys}].mine:not([data-{x}][data-{y}])),
   xs := range(x - 1, x + 1),
   ys := range(y - 1, y + 1)
@@ -123,10 +123,10 @@ write/fail("num of mines must always equal settings") when
 
 write/html/class/add(.cell[data-x={xs}][data-y={ys}]:not(.open), "open"),
 write/html/event/expand(.cell[data-x={xs}][data-y={ys}]:not(.open, [data-{x}][data-{y}])) when
-  xs := range(x - 1, x + 1),
-  ys := range(y - 1, y + 1),
   read/html/event/(click|expand)(.cell[data-{x}][data-{y}][data-{count}]),
-  read/html/len(.cell[data-x={xs}][data-y={ys}].flagged) = count
+  read/html/len(.cell[data-x={xs}][data-y={ys}].flagged) = count,
+  xs := range(x - 1, x + 1),
+  ys := range(y - 1, y + 1)
 end
 
 write/html/class/add(.cell[data-{x}][data-{y}], "open") when
