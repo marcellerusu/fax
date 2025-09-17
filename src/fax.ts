@@ -478,7 +478,7 @@ class Parser {
 }
 
 let program = `
-#<data-x="test" class={x}>
+#<data-x="test" {class}>
 `;
 
 let tokens = new Lexer(program).run();
