@@ -26,6 +26,7 @@ type Token = (
   | { type: "continue" }
   | { type: "starting-with" }
   | { type: "if" }
+  | { type: "then" }
   | { type: "else" }
   | { type: "end" }
   | { type: "true" }
@@ -125,6 +126,8 @@ class Lexer {
         tokens.push({ type: "when", span: this.span() });
       } else if (this.test("if")) {
         tokens.push({ type: "if", span: this.span() });
+      } else if (this.test("then")) {
+        tokens.push({ type: "then", span: this.span() });
       } else if (this.test("else")) {
         tokens.push({ type: "else", span: this.span() });
       } else if (this.test("end")) {
@@ -172,6 +175,7 @@ type ASTNode =
   | { kind: "plus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "minus"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "loop"; args: ASTNode[]; body: ASTNode[] }
+  | { kind: "if"; test: ASTNode; pass: ASTNode[]; fail: ASTNode[] }
   | {
       kind: "jsx";
       element: string;
@@ -193,7 +197,7 @@ class Parser {
   consume<T extends Token["type"]>(pattern: T): ExtractTokenType<T> {
     if (this.tokens[this.idx].type !== pattern) {
       console.log("expected", pattern, "got", this.tokens[this.idx].type);
-      throw "parse error";
+      throw new Error("parse error");
     }
     return this.tokens[this.idx++] as ExtractTokenType<T>;
   }
@@ -335,6 +339,27 @@ class Parser {
     return { kind: "bool", value: false };
   }
 
+  parse_if(): ASTNode {
+    this.consume("if");
+    let test = this.parse_expr();
+    this.consume("then");
+    let pass: ASTNode[] = [];
+    while (!this.scan("else")) {
+      pass.push(this.parse_expr());
+      if (this.scan("else")) continue;
+      else this.consume(",");
+    }
+    this.consume("else");
+    let fail: ASTNode[] = [];
+    while (!this.scan("end")) {
+      fail.push(this.parse_expr());
+      if (this.scan("end")) continue;
+      else this.consume(",");
+    }
+    this.consume("end");
+    return { kind: "if", test, pass, fail };
+  }
+
   parse_expr_1(): ASTNode {
     if (this.scan("id", "/")) {
       return this.parse_property_lookup();
@@ -360,6 +385,8 @@ class Parser {
       return this.parse_return();
     } else if (this.scan("continue")) {
       return this.parse_continue();
+    } else if (this.scan("if")) {
+      return this.parse_if();
     } else {
       console.log(this.tokens[this.idx], this.tokens[this.idx + 1]);
       throw "parse expr_1 error";
@@ -442,7 +469,12 @@ class Parser {
 }
 
 let program = `
-#[data-x="test" {class}]
+if a = true then
+  b := true,
+  #[a]
+else
+  "wee"
+end  
 `;
 
 let tokens = new Lexer(program).run();
