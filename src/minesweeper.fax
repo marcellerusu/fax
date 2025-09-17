@@ -19,15 +19,15 @@ write/state/mines(loop |num-mines-left, mines| {
   end
 } starting-with #[
   read/local-storage("total-mines"),
-  fill(0..height, fill(0..width, false))
+  repeat(height, repeat(width, false))
 ]) when
   width := read/local-storage("width"),
   height := read/local-storage("height")
 end
 
 write/html/body(<div class="board" />)
-write/html/append(.board, fill(0..read/state/height, <span class="row" />))
-write/html/append(.row, fill(0..read/state/width, <div class="cell" />))
+write/html/append(.board, repeat(read/state/height, <span class="row" />))
+write/html/append(.row, repeat(read/state/width, <div class="cell" />))
 
 write/html/attr(.row:nth-child(y) .cell:nth-child(x), #<data-{x} data-{y}>)
 write/html/attr([data-{x}][data-{y}][class="cell"], #<class="cell mine">)
@@ -35,8 +35,8 @@ write/html/attr([data-{x}][data-{y}][class="cell"], #<class="cell mine">)
 
 write/html/attr(.cell[data-{x}][data-{y}], #[data-{count}]) when
   count := read/html/len(.cell[data-x={xs}][data-y={ys}].mine:not([data-{x}][data-{y}]))
-  xs := (x - 1)..(x + 1),
-  ys := (y - 1)..(y + 1)
+  xs := range(x - 1, x + 1),
+  ys := range(y - 1, y + 1)
 end
 
 write/html/append(.cell, <Flag />)
@@ -48,8 +48,8 @@ write/fail("num of mines must always equal settings") when
 
 write/html/class/add(.cell[data-x={xs}][data-y={ys}]:not(.open), "open"),
 write/html/event/expand(.cell[data-x={xs}][data-y={ys}]:not(.open, [data-{x}][data-{y}])) when
-  xs := (x - 1)..(x + 1),
-  ys := (y - 1)..(y + 1),
+  xs := range(x - 1, x + 1),
+  ys := range(y - 1, y + 1),
   read/html/event/(click|expand)(.cell[data-{x}][data-{y}][data-{count}]),
   read/html/len(.cell[data-x={xs}][data-y={ys}].flagged) = count
 end

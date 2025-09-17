@@ -175,7 +175,6 @@ type ASTNode =
   | { kind: "id"; name: string }
   | { kind: "string"; value: string }
   | { kind: "bool"; value: boolean }
-  | { kind: "range"; lhs: ASTNode; rhs: ASTNode }
   | { kind: "paren"; expr: ASTNode }
   | { kind: "attr_bag"; attrs: Record<string, ASTNode> }
   | { kind: "array_literal"; elements: ASTNode[] }
@@ -407,12 +406,6 @@ class Parser {
     }
   }
 
-  parse_range(lhs: ASTNode): ASTNode {
-    this.consume("..");
-    let rhs = this.parse_expr();
-    return { kind: "range", lhs, rhs };
-  }
-
   parse_eq(lhs: ASTNode): ASTNode {
     this.consume("=");
     let rhs = this.parse_expr();
@@ -456,8 +449,6 @@ class Parser {
       let expr = this.parse_expr_1();
       if (this.scan("(")) {
         return this.parse_invoke(expr);
-      } else if (this.scan("..")) {
-        return this.parse_range(expr);
       } else if (this.scan("+")) {
         return this.parse_plus(expr);
       } else if (this.scan("-")) {
