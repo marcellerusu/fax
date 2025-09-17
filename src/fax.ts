@@ -509,8 +509,8 @@ class Emitter {
     return `"${node.value}"`;
   }
 
-  emit_number(_node: { value: number }): string {
-    throw new Error("Method not implemented.");
+  emit_number(node: { value: number }): string {
+    return `${node.value}`;
   }
 
   emit_property_lookup(node: { chain: string[] }): string {
@@ -528,17 +528,33 @@ class Emitter {
     args: ASTNode[];
     conds: ASTNode[];
   }): string {
-    return `eff(() => {
-      if (${node.conds.map((c) => this.emit_node(c)).join(" && ")}) {
+    if (node.conds.every((n) => n.kind === "assign")) {
+      return `eff(() => {
+        ${node.conds.map((n) => this.emit_node(n)).join(";\n")}
         ${this.emit_node(node.lhs)}(${node.args
-      .map((a) => this.emit_node(a))
-      .join(", ")})
-      }
-    })`;
+        .map((a) => this.emit_node(a))
+        .join(", ")})
+      })`;
+    } else {
+      return `eff(() => {
+        ${node.conds
+          .filter((n) => n.kind === "assign")
+          .map((n) => this.emit_node(n))
+          .join(";\n")}
+        if (${node.conds
+          .filter((n) => n.kind !== "assign")
+          .map((c) => this.emit_node(c))
+          .join(" && ")}) {
+          ${this.emit_node(node.lhs)}(${node.args
+        .map((a) => this.emit_node(a))
+        .join(", ")})
+        }
+      })`;
+    }
   }
 
-  emit_id(_node: { name: string }): string {
-    throw new Error("Method not implemented.");
+  emit_id(node: { name: string }): string {
+    return `${node.name}`;
   }
 
   emit_bool(node: { value: boolean }): string {
@@ -553,8 +569,8 @@ class Emitter {
     throw new Error("Method not implemented.");
   }
 
-  emit_assign(_node: { name: string; expr: ASTNode }): string {
-    throw new Error("Method not implemented.");
+  emit_assign(node: { name: string; expr: ASTNode }): string {
+    return `let ${node.name} = ${this.emit_node(node.expr)}`;
   }
 
   emit_return(_node: { expr: ASTNode }): string {
@@ -569,8 +585,8 @@ class Emitter {
     return `${this.emit_node(node.lhs)} === ${this.emit_node(node.rhs)}`;
   }
 
-  emit_plus(_node: { lhs: ASTNode; rhs: ASTNode }): string {
-    throw new Error("Method not implemented.");
+  emit_plus(node: { lhs: ASTNode; rhs: ASTNode }): string {
+    return `${this.emit_node(node.lhs)} + ${this.emit_node(node.rhs)}`;
   }
 
   emit_minus(_node: { lhs: ASTNode; rhs: ASTNode }): string {
