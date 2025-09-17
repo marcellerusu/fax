@@ -273,13 +273,15 @@ class Parser {
       return { kind: "jsx", element: name, attrs, children: [] };
     } else {
       this.consume(">");
-      let children: ASTNode[];
-      if (this.scan("{")) {
-        this.consume("{");
-        children = [this.parse_expr()];
-        this.consume("}");
-      } else {
-        children = [this.parse_jsx()];
+      let children: ASTNode[] = [];
+      while (!this.scan("</")) {
+        if (this.scan("{")) {
+          this.consume("{");
+          children.push(this.parse_expr());
+          this.consume("}");
+        } else {
+          children.push(this.parse_jsx());
+        }
       }
       this.consume("</");
       this.consume("id");
@@ -589,8 +591,8 @@ class Emitter {
     return `${this.emit_node(node.lhs)} + ${this.emit_node(node.rhs)}`;
   }
 
-  emit_minus(_node: { lhs: ASTNode; rhs: ASTNode }): string {
-    throw new Error("Method not implemented.");
+  emit_minus(node: { lhs: ASTNode; rhs: ASTNode }): string {
+    return `${this.emit_node(node.lhs)} - ${this.emit_node(node.rhs)}`;
   }
 
   emit_loop(_node: { args: ASTNode[]; body: ASTNode[] }): string {
