@@ -1,6 +1,6 @@
-write/local-storage("width", 10) when read/local-storage("width", nil)
-write/local-storage("height", 10) when read/local-storage("height", nil)
-write/local-storage("total-mines", 9) when read/local-storage("height", nil)
+write/local-storage("width", 10) when read/local-storage("width", null)
+write/local-storage("height", 10) when read/local-storage("height", null)
+write/local-storage("total-mines", 9) when read/local-storage("height", null)
 
 write/state/mines(loop |num-mines-left := total-mines, mines| {
   if num-mines-left = 0 then
