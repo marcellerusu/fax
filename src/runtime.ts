@@ -16,14 +16,24 @@ export function createSignal<T>(initial: T): Signal<T> {
   return [get, set];
 }
 
+type JSXNode = {
+  kind: string;
+  attrs: Record<string, any>;
+  children: JSXNode[];
+};
+
 export function h(
-  element: string,
+  kind: string,
   attrs: Record<string, any>,
   children: any[]
-): HTMLElement {
-  let elem = document.createElement(element);
+): JSXNode {
+  return { kind, attrs, children };
+}
+
+function html({ kind, attrs, children }: JSXNode) {
+  let elem = document.createElement(kind);
   for (let key in attrs) elem.setAttribute(key, attrs[key]);
-  elem.append(...children);
+  elem.append(...children.map(html));
   return elem;
 }
 
@@ -54,26 +64,22 @@ export let write = {
     }
   ) as Record<string, Function>,
   html: {
-    body(elem: any) {
+    body(arg: JSXNode | JSXNode[]) {
       document.body.innerHTML = "";
-      if (elem instanceof Array) {
-        // this is so stupid, h() shouldn't return html, it should return
-        // an object descriptor
-        document.body.innerHTML = elem.map((e) => e.outerHTML).join(" ");
+      if (arg instanceof Array) {
+        document.body.append(...arg.map(html));
       } else {
-        document.body.append(elem);
+        document.body.append(html(arg));
       }
     },
-    append(query: string, elem: any) {
-      if (elem instanceof Array) {
-        // this is so stupid, h() shouldn't return html, it should return
-        // an object descriptor
+    append(query: string, arg: any) {
+      if (arg instanceof Array) {
         for (let found of document.querySelectorAll(query)) {
-          found.innerHTML = elem.map((e) => e.outerHTML).join(" ");
+          found.append(...arg.map(html));
         }
       } else {
         for (let found of document.querySelectorAll(query)) {
-          found.append(elem);
+          found.append(html(arg));
         }
       }
     },
