@@ -516,7 +516,7 @@ class Emitter {
   }
 
   emit_property_lookup(node: { chain: string[] }): string {
-    return node.chain.join(".");
+    return node.chain.map((c) => c.replaceAll("-", "_")).join(".");
   }
 
   emit_invoke(node: { lhs: ASTNode; args: ASTNode[] }): string {

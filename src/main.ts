@@ -14,6 +14,10 @@ import {
 } from "./runtime";
 
 let code = compile(`
+write/state/width(10)
+write/state/height(10)
+write/state/total-mines(10)
+
 write/state/mines(loop |num-mines-left := total-mines, mines| {
   if num-mines-left = 0 then
     return(mines)
@@ -31,13 +35,16 @@ write/state/mines(loop |num-mines-left := total-mines, mines| {
   end
 }) when
   mines := repeat(height, repeat(width, false)),
-  total-mines := 9,
-  width := 10,
-  height := 10
+  total-mines := read/state/total-mines,
+  width := read/state/width,
+  height := read/state/height
 end
 
-write/html/body(repeat(len(mines), <div class="cell" />))
-  when mines := read/state/mines
+write/html/body(<div class="board" />)
+write/html/append(".board", repeat(height, <div class="row" />))
+  when height := read/state/height
+write/html/append(".row", repeat(width, <div class="cell" />))
+  when width := read/state/width
 `);
 
 eval(code);

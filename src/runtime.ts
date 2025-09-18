@@ -64,6 +64,19 @@ export let write = {
         document.body.append(elem);
       }
     },
+    append(query: string, elem: any) {
+      if (elem instanceof Array) {
+        // this is so stupid, h() shouldn't return html, it should return
+        // an object descriptor
+        for (let found of document.querySelectorAll(query)) {
+          found.innerHTML = elem.map((e) => e.outerHTML).join(" ");
+        }
+      } else {
+        for (let found of document.querySelectorAll(query)) {
+          found.append(elem);
+        }
+      }
+    },
   },
 };
 
