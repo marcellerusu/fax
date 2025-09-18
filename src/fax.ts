@@ -424,10 +424,10 @@ class Parser {
     let args: ASTNode[] = [];
     this.consume("|");
     while (!this.scan("|")) {
-      if (this.scan("id")) {
-        args.push(this.parse_id());
-      } else {
+      if (this.scan("id", ":=")) {
         args.push(this.parse_assign());
+      } else {
+        args.push(this.parse_id());
       }
       if (!this.scan("|")) this.consume(",");
     }
@@ -563,8 +563,8 @@ class Emitter {
     return `${node.value}`;
   }
 
-  emit_paren(_node: { expr: ASTNode }): string {
-    throw new Error("Method not implemented.");
+  emit_paren(node: { expr: ASTNode }): string {
+    return `(${this.emit_node(node.expr)})`;
   }
 
   emit_attr_bag(_node: { attrs: Record<string, ASTNode> }): string {
@@ -575,12 +575,14 @@ class Emitter {
     return `let ${node.name} = ${this.emit_node(node.expr)}`;
   }
 
-  emit_return(_node: { expr: ASTNode }): string {
-    throw new Error("Method not implemented.");
+  emit_return(node: { expr: ASTNode }): string {
+    return `return loop.return(${this.emit_node(node.expr)})`;
   }
 
-  emit_continue(_node: { args: ASTNode[] }): string {
-    throw new Error("Method not implemented.");
+  emit_continue(node: { args: ASTNode[] }): string {
+    return `return loop.continue(${node.args
+      .map((a) => this.emit_node(a))
+      .join(", ")})`;
   }
 
   emit_eq(node: { lhs: ASTNode; rhs: ASTNode }): string {
@@ -595,12 +597,37 @@ class Emitter {
     return `${this.emit_node(node.lhs)} - ${this.emit_node(node.rhs)}`;
   }
 
-  emit_loop(_node: { args: ASTNode[]; body: ASTNode[] }): string {
-    throw new Error("Method not implemented.");
+  emit_loop(node: { args: ASTNode[]; body: ASTNode[] }): string {
+    let arg_names = [];
+    let initial_args = [];
+    for (let arg of node.args) {
+      switch (arg.kind) {
+        case "assign":
+          arg_names.push(arg.name);
+          initial_args.push(arg.expr);
+          break;
+        case "id":
+          arg_names.push(arg.name);
+          initial_args.push(arg);
+          break;
+        default:
+          throw "invalid arg";
+      }
+    }
+    return `loop(
+      (${arg_names.join(", ")}) => {
+        ${node.body.map((n) => this.emit_node(n)).join(";\n")}
+      },
+      [${initial_args.map((a) => this.emit_node(a)).join(", ")}]
+    )`;
   }
 
-  emit_if(_node: { test: ASTNode; pass: ASTNode[]; fail: ASTNode[] }): string {
-    throw new Error("Method not implemented.");
+  emit_if(node: { test: ASTNode; pass: ASTNode[]; fail: ASTNode[] }): string {
+    return `if (${this.emit_node(node.test)}) {
+      ${node.pass.map((n) => this.emit_node(n)).join(";\n")}
+    } else {
+      ${node.fail.map((n) => this.emit_node(n)).join(";\n")}
+    }`;
   }
 
   emit_jsx(node: {

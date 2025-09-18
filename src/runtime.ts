@@ -52,7 +52,7 @@ export let write = {
         };
       },
     }
-  ),
+  ) as Record<string, Function>,
   html: {
     body(html: HTMLElement) {
       document.body.innerHTML = "";
@@ -73,6 +73,9 @@ export let read = {
       },
     }
   ),
+  local_storage(key: string) {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
+  },
   html: {
     event: new Proxy(
       {},
@@ -103,4 +106,35 @@ export let read = {
       }
     ),
   },
+};
+
+export function repeat<T>(count: number, value: T): T[] {
+  return Array.from({ length: count }, (_) => value);
+}
+
+export function replace(array: any[], idx: number, value: any) {
+  let out = [];
+  for (let i = 0; i < array.length; i++) {
+    if (idx === i) {
+      out[i] = value;
+    } else {
+      out[i] = array[i];
+    }
+  }
+  return out;
+}
+
+export function loop(f: any, starting: any) {
+  let result = f(...starting);
+  while (result.kind === "continue") {
+    result = f(...result.args);
+  }
+  if (result.kind !== "return") throw "invalid loop result";
+  return result.value;
+}
+loop.return = function (value: any) {
+  return { kind: "return", value };
+};
+loop.continue = function (...args: any) {
+  return { kind: "continue", args };
 };
