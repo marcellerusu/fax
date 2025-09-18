@@ -54,9 +54,15 @@ export let write = {
     }
   ) as Record<string, Function>,
   html: {
-    body(html: HTMLElement) {
+    body(elem: any) {
       document.body.innerHTML = "";
-      document.body.append(html);
+      if (elem instanceof Array) {
+        // this is so stupid, h() shouldn't return html, it should return
+        // an object descriptor
+        document.body.innerHTML = elem.map((e) => e.outerHTML).join(" ");
+      } else {
+        document.body.append(elem);
+      }
     },
   },
 };
@@ -143,4 +149,12 @@ export function get(array: any[], ...path: number[]) {
   let result = array;
   for (let idx of path) result = result[idx];
   return result;
+}
+
+export function rand_int(to: number) {
+  return Number.parseInt((Math.random() * to) as any);
+}
+
+export function len(array: any[]) {
+  return array.length;
 }

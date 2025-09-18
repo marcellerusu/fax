@@ -1,6 +1,17 @@
 import "./style.css";
 import { compile } from "./fax";
-import { h, write, read, eff, repeat, replace, loop, get } from "./runtime";
+import {
+  h,
+  write,
+  read,
+  eff,
+  repeat,
+  replace,
+  loop,
+  get,
+  rand_int,
+  len,
+} from "./runtime";
 
 // eff(() => {
 //   let width = read.local_storage("width");
@@ -53,31 +64,31 @@ import { h, write, read, eff, repeat, replace, loop, get } from "./runtime";
 // end
 
 let code = compile(`
-write/state/count(loop |count := 0| {
-  if count = 10 then
-    return(count)
+write/state/mines(loop |num-mines-left := total-mines, mines| {
+  if num-mines-left = 0 then
+    return(mines)
   else
-    continue(count + 1)
+    x := rand-int(width),
+    y := rand-int(height),
+    if get(mines, y, x) then
+      continue(num-mines-left, mines)
+    else
+      continue(
+        num-mines-left - 1,
+        replace(mines, y, replace(get(mines, y), x, true))
+      )
+    end
   end
-})
-
-write/html/body(
-  <div>
-    <button class="minus">{"-"}</button>
-    {count}
-    <button class="plus">{"+"}</button>
-  </div>
-) when count := read/state/count
-
-write/state/count(count + 1) when
-  read/html/event/mousedown(".plus"),
-  count := read/state/count
+}) when
+  total-mines := 9,
+  width := 10,
+  height := 10,
+  mines := repeat(height, repeat(width, false))
 end
 
-write/state/count(count - 1) when
-  read/html/event/mousedown(".minus"),
-  count := read/state/count
-end
+write/html/body(repeat(len(mines), <div class="cell" />))
+  when mines := read/state/mines
+
 `);
 
 eval(code);

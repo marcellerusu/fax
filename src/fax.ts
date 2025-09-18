@@ -556,7 +556,7 @@ class Emitter {
   }
 
   emit_id(node: { name: string }): string {
-    return `${node.name}`;
+    return `${node.name.replaceAll("-", "_")}`;
   }
 
   emit_bool(node: { value: boolean }): string {
@@ -572,7 +572,9 @@ class Emitter {
   }
 
   emit_assign(node: { name: string; expr: ASTNode }): string {
-    return `let ${node.name} = ${this.emit_node(node.expr)}`;
+    return `let ${node.name.replaceAll("-", "_")} = ${this.emit_node(
+      node.expr
+    )}`;
   }
 
   emit_return(node: { expr: ASTNode }): string {
@@ -603,11 +605,11 @@ class Emitter {
     for (let arg of node.args) {
       switch (arg.kind) {
         case "assign":
-          arg_names.push(arg.name);
+          arg_names.push(arg.name.replaceAll("-", "_"));
           initial_args.push(arg.expr);
           break;
         case "id":
-          arg_names.push(arg.name);
+          arg_names.push(arg.name.replaceAll("-", "_"));
           initial_args.push(arg);
           break;
         default:
