@@ -138,3 +138,9 @@ loop.return = function (value: any) {
 loop.continue = function (...args: any) {
   return { kind: "continue", args };
 };
+
+export function get(array: any[], ...path: number[]) {
+  let result = array;
+  for (let idx of path) result = result[idx];
+  return result;
+}

@@ -1,6 +1,6 @@
 import "./style.css";
 import { compile } from "./fax";
-import { h, write, read, eff, repeat, replace, loop } from "./runtime";
+import { h, write, read, eff, repeat, replace, loop, get } from "./runtime";
 
 // eff(() => {
 //   let width = read.local_storage("width");
@@ -36,12 +36,12 @@ import { h, write, read, eff, repeat, replace, loop } from "./runtime";
 //   else
 //     x := rand-int(width),
 //     y := rand-int(height),
-//     if mines[y][x] then
+//     if get(mines, y, x) then
 //       continue(num-mines-left, mines)
 //     else
 //       continue(
 //         num-mines-left - 1,
-//         replace(mines, y, replace(mines[y], x, true))
+//         replace(mines, y, replace(get(mines, y), x, true))
 //       )
 //     end
 //   end
