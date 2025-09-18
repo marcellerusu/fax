@@ -53,14 +53,14 @@ import { h, write, read, eff, repeat, replace, loop } from "./runtime";
 // end
 
 let code = compile(`
-write/state/count(loop |count := c| {
+write/state/count(loop |count := 0| {
   if count = 10 then
     return(count)
   else
     continue(count + 1)
   end
-}) when c := 0
-  
+})
+
 write/html/body(
   <div>
     <button class="minus">{"-"}</button>
@@ -70,12 +70,12 @@ write/html/body(
 ) when count := read/state/count
 
 write/state/count(count + 1) when
-  read/html/event/click(".plus"),
+  read/html/event/mousedown(".plus"),
   count := read/state/count
 end
 
 write/state/count(count - 1) when
-  read/html/event/click(".minus"),
+  read/html/event/mousedown(".minus"),
   count := read/state/count
 end
 `);

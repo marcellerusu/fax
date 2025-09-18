@@ -686,6 +686,8 @@ class Emitter {
 
   emit(): string {
     let out = "";
+    // should we just wrap all top level shit in a eff(() => { .. }) ?
+    // probably
     for (let node of this.ast) out += this.emit_node(node) + ";\n";
     return out;
   }

@@ -80,7 +80,7 @@ export let read = {
     event: new Proxy(
       {},
       {
-        get(_, event_name) {
+        get(_, event_name: string) {
           return (query: string) => {
             if (_events[event_name]?.[query]) {
               let [get, set] = _events[event_name][query];
@@ -93,9 +93,9 @@ export let read = {
               return value;
             } else {
               _events[event_name] ??= {};
-              let [get, set] = createSignal(null);
+              let [get, set] = createSignal<Event | null>(null);
               _events[event_name][query] = [get, set];
-              document.addEventListener("click", (e) => {
+              document.addEventListener(event_name, (e) => {
                 if (!(e.target instanceof HTMLElement)) return;
                 if (e.target!.matches(query)) set(e);
               });
