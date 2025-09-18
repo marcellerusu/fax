@@ -530,17 +530,94 @@ class Emitter {
     args: ASTNode[];
     conds: ASTNode[];
   }): string {
+    function find_id_refs(node: ASTNode): string[] {
+      switch (node.kind) {
+        case "string":
+          return [];
+        case "number":
+          return [];
+        case "property_lookup":
+          return [];
+        case "invoke":
+          return node.args.flatMap(find_id_refs);
+        case "conditional_invoke":
+          throw "invalid";
+        case "id":
+          return [node.name];
+        case "bool":
+          return [];
+        case "paren":
+          return find_id_refs(node.expr);
+        case "attr_bag":
+          return Object.values(node.attrs).flatMap(find_id_refs);
+        case "assign":
+          return find_id_refs(node.expr);
+        case "return":
+          throw "invalid";
+        case "continue":
+          throw "invalid";
+        case "eq":
+          return [...find_id_refs(node.lhs), ...find_id_refs(node.rhs)];
+        case "plus":
+          return [...find_id_refs(node.lhs), ...find_id_refs(node.rhs)];
+        case "minus":
+          return [...find_id_refs(node.lhs), ...find_id_refs(node.rhs)];
+        case "loop":
+          throw "invalid";
+        case "if":
+          return [
+            ...find_id_refs(node.test),
+            ...node.pass.flatMap(find_id_refs),
+            ...node.fail.flatMap(find_id_refs),
+          ];
+        case "jsx":
+          throw "invalid";
+      }
+    }
+
+    function reorder_assignments(
+      conds: {
+        kind: "assign";
+        name: string;
+        expr: ASTNode;
+      }[]
+    ) {
+      for (let i = 0; i < conds.length; i++) {
+        let { name, expr } = conds[i];
+        let idx_to_move_past: number | null = null;
+        let ids = find_id_refs(expr);
+        // we have to see if the id is defined in the future
+        for (let j = i; j < conds.length; j++) {
+          if (
+            // my assign refers to this assign
+            ids.includes(conds[j].name) ||
+            // OR this assign refers to my assign
+            find_id_refs(conds[j].expr).includes(name)
+          ) {
+            idx_to_move_past = j;
+          }
+        }
+        if (idx_to_move_past) {
+          let elem = node.conds[i];
+          node.conds.splice(i, 1);
+          node.conds[idx_to_move_past] = elem;
+        }
+      }
+      return conds;
+    }
+
     if (node.conds.every((n) => n.kind === "assign")) {
       return `eff(() => {
-        ${node.conds.map((n) => this.emit_node(n)).join(";\n")}
+        ${reorder_assignments(node.conds)
+          .map((n) => this.emit_node(n))
+          .join(";\n")}
         ${this.emit_node(node.lhs)}(${node.args
         .map((a) => this.emit_node(a))
         .join(", ")})
       })`;
     } else {
       return `eff(() => {
-        ${node.conds
-          .filter((n) => n.kind === "assign")
+        ${reorder_assignments(node.conds.filter((n) => n.kind === "assign"))
           .map((n) => this.emit_node(n))
           .join(";\n")}
         if (${node.conds

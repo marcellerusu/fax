@@ -155,6 +155,19 @@ export function rand_int(to: number) {
   return Number.parseInt((Math.random() * to) as any);
 }
 
+class Range {
+  constructor(public from: number, public to: number) {}
+  *[Symbol.iterator]() {
+    for (let i = this.from; i <= this.to; i++) {
+      yield i;
+    }
+  }
+}
+
+export function range(from: number, to: number) {
+  return new Range(from, to);
+}
+
 export function len(array: any[]) {
   return array.length;
 }

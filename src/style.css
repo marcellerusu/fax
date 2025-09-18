@@ -12,3 +12,10 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.cell {
+  width: 10px;
+  height: 10px;
+  background: red;
+  margin: 10px;
+}
